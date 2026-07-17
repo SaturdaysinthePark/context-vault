@@ -11,6 +11,15 @@ enum SourceType: String, Codable, CaseIterable, Sendable {
     case shareExtension
 }
 
+/// On-device-classified sensitivity of a memory. `sensitive` content is
+/// excluded from the system index by default, making privacy proactive.
+enum Sensitivity: String, Codable, CaseIterable, Sendable {
+    case unclassified
+    case personal
+    case professional
+    case sensitive
+}
+
 /// A normalized piece of knowledge: a note, document, page, or highlight.
 @Model
 final class Memory {
@@ -23,6 +32,9 @@ final class Memory {
     var sourceTypeRaw: String
     /// Stable reference into the source system (file path, Notion page ID, Drive file ID).
     var sourceRef: String?
+    var sensitivityRaw: String
+    /// User override: expose to Siri even though classified sensitive.
+    var forceSiriVisible: Bool
     var createdAt: Date
     var modifiedAt: Date
     /// Set when the memory has been written to the Spotlight index.
@@ -34,10 +46,18 @@ final class Memory {
         set { sourceTypeRaw = newValue.rawValue }
     }
 
-    /// True when at least one containing collection allows Siri exposure,
-    /// or when the memory is uncollected (default-exposed; see SpotlightIndexer).
+    var sensitivity: Sensitivity {
+        get { Sensitivity(rawValue: sensitivityRaw) ?? .unclassified }
+        set { sensitivityRaw = newValue.rawValue }
+    }
+
+    /// True when the memory may enter the system index: its collections
+    /// allow Siri exposure (uncollected memories are default-exposed) AND
+    /// it isn't classified sensitive (unless the user overrode that).
     var isSiriVisible: Bool {
-        collections.isEmpty || collections.contains { $0.siriVisible }
+        let collectionAllows = collections.isEmpty || collections.contains { $0.siriVisible }
+        let sensitivityAllows = sensitivity != .sensitive || forceSiriVisible
+        return collectionAllows && sensitivityAllows
     }
 
     init(
@@ -57,6 +77,8 @@ final class Memory {
         self.summary = summary
         self.sourceTypeRaw = sourceType.rawValue
         self.sourceRef = sourceRef
+        self.sensitivityRaw = Sensitivity.unclassified.rawValue
+        self.forceSiriVisible = false
         self.createdAt = createdAt
         self.modifiedAt = modifiedAt
         self.collections = collections
