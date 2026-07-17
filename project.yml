@@ -1,0 +1,38 @@
+# XcodeGen project spec — run `xcodegen generate` (brew install xcodegen) to produce ContextVault.xcodeproj
+name: ContextVault
+options:
+  bundleIdPrefix: com.saturdaysinthepark
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    GENERATE_INFOPLIST_FILE: true
+    INFOPLIST_KEY_UILaunchScreen_Generation: true
+targets:
+  ContextVault:
+    type: application
+    platform: iOS
+    sources: [ContextVault]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.saturdaysinthepark.contextvault
+        INFOPLIST_KEY_NSSiriUsageDescription: "Context Vault lets Siri answer questions using your memories and collections."
+        INFOPLIST_KEY_BGTaskSchedulerPermittedIdentifiers: "com.saturdaysinthepark.contextvault.sync"
+    info:
+      path: ContextVault/Info.plist
+      properties:
+        BGTaskSchedulerPermittedIdentifiers:
+          - com.saturdaysinthepark.contextvault.sync
+        UIBackgroundModes:
+          - processing
+        CoreSpotlightContinuation: true
+  ContextVaultTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [ContextVaultTests]
+    dependencies:
+      - target: ContextVault

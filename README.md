@@ -30,7 +30,36 @@ iOS 27 is the first iOS release where this is genuinely possible:
 
 ## Status
 
-📐 **Planning phase.** See [`docs/PLAN.md`](docs/PLAN.md) for the full feasibility research, architecture, and phased roadmap, and [`docs/RESEARCH.md`](docs/RESEARCH.md) for the underlying platform research with citations.
+🚧 **Phase 1–2 scaffold in place** — data models, ingestion pipeline, Spotlight/Siri indexing, App Intents, on-device chat, and the Obsidian/Markdown-folder connector. See [`docs/PLAN.md`](docs/PLAN.md) for the roadmap and [`docs/RESEARCH.md`](docs/RESEARCH.md) for the platform research with citations.
+
+## Building
+
+The repo uses [XcodeGen](https://github.com/yonaskolb/XcodeGen) to keep the project file out of git:
+
+```sh
+brew install xcodegen
+xcodegen generate
+open ContextVault.xcodeproj
+```
+
+Build and run on an Apple Intelligence-capable device or simulator (Xcode 26+; Xcode 27 beta for the `SpotlightSearchTool` path). If you prefer not to use XcodeGen, create a new iOS App project in Xcode named `ContextVault` and drag the `ContextVault/` source folder in.
+
+### Project layout
+
+```
+ContextVault/
+  App/         entry point + root tab view
+  Models/      SwiftData: Memory, MemoryCollection (aspects, Siri toggle), SourceAccount
+  Store/       VaultStore — main-actor gateway used by intents/sync/indexing
+  Ingestion/   MarkdownNormalizer + Chunker (token-budget-aware)
+  Indexing/    SpotlightIndexer — the semantic-index bridge to Siri (privacy-filtered)
+  AI/          VaultChatService — Foundation Models RAG (iOS 27 SpotlightSearchTool path gated)
+  Intents/     AppEntities (IndexedEntity), AskVaultIntent, CaptureMemoryIntent, App Shortcuts
+  Connectors/  Connector protocol + ObsidianConnector (security-scoped folder sync)
+  Sync/        SyncManager — foreground-first + BGProcessingTask top-ups
+  Views/       Vault, Collections, Ask (chat with citations), Sources
+ContextVaultTests/  Chunker + normalizer unit tests (Swift Testing)
+```
 
 ## Requirements (target)
 
