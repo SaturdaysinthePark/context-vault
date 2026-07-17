@@ -1,0 +1,12 @@
+# Xcode
+ContextVault.xcodeproj/
+xcuserdata/
+DerivedData/
+*.xcresult
+
+# macOS
+.DS_Store
+
+# SwiftPM
+.build/
+.swiftpm/

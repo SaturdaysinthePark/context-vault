@@ -92,7 +92,7 @@ struct ChatView: View {
         isThinking = true
 
         let collectionID = scopedCollectionID
-        Task {
+        Task { @MainActor in
             defer { isThinking = false }
             do {
                 let scoped: MemoryCollection? = collectionID.flatMap { id in

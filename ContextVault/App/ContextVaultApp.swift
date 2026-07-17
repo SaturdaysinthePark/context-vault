@@ -3,16 +3,11 @@ import SwiftData
 
 @main
 struct ContextVaultApp: App {
-    let container: ModelContainer
+    // Single shared container: views (@Query), intents, and sync must all
+    // observe the same ModelContainer or changes won't propagate.
+    let container = VaultStore.shared.container
 
     init() {
-        do {
-            container = try ModelContainer(
-                for: Memory.self, MemoryCollection.self, SourceAccount.self
-            )
-        } catch {
-            fatalError("Failed to create ModelContainer: \(error)")
-        }
         SyncManager.shared.registerBackgroundTasks()
     }
 

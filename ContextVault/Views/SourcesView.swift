@@ -100,8 +100,10 @@ struct SourcesView: View {
         defer { url.stopAccessingSecurityScopedResource() }
 
         do {
+            // Plain bookmark: on iOS the security scope is carried implicitly
+            // (the macOS-only .withSecurityScope option doesn't exist here).
             let bookmark = try url.bookmarkData(
-                options: .minimalBookmark,
+                options: [],
                 includingResourceValuesForKeys: nil,
                 relativeTo: nil
             )

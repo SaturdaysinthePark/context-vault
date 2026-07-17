@@ -28,9 +28,10 @@ struct AskVaultIntent: AppIntent {
             return .result(dialog: "Context Vault needs iOS 26 or later.")
         }
 
-        let scoped: MemoryCollection? = try await MainActor.run {
-            guard let id = collection?.id else { return nil }
-            return try VaultStore.shared.collections(ids: [id]).first
+        let collectionID = collection?.id
+        let scoped: MemoryCollection? = try await MainActor.run { () throws -> MemoryCollection? in
+            guard let collectionID else { return nil }
+            return try VaultStore.shared.collections(ids: [collectionID]).first
         }
 
         let service = VaultChatService()

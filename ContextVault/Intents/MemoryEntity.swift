@@ -12,20 +12,20 @@ struct MemoryEntity: AppEntity, IndexedEntity {
 
     var id: UUID
 
-    @Property(title: "Title", indexingKey: \.title)
+    @Property(indexingKey: \.title)
     var title: String
 
-    @Property(title: "Content", indexingKey: \.textContent)
+    @Property(indexingKey: \.textContent)
     var content: String
 
-    @Property(title: "Collection")
     var collectionName: String?
 
     var displayRepresentation: DisplayRepresentation {
-        DisplayRepresentation(
-            title: "\(title)",
-            subtitle: collectionName.map { "\($0)" }
-        )
+        if let collectionName {
+            DisplayRepresentation(title: "\(title)", subtitle: "\(collectionName)")
+        } else {
+            DisplayRepresentation(title: "\(title)")
+        }
     }
 
     init(memory: Memory) {

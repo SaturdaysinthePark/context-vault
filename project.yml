@@ -7,11 +7,11 @@ options:
   createIntermediateGroups: true
 settings:
   base:
-    SWIFT_VERSION: "6.0"
+    # Swift 5 language mode for now — the scaffold hasn't been audited for
+    # Swift 6 strict concurrency; flip to 6.0 once warnings are cleaned up.
+    SWIFT_VERSION: "5.0"
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
-    GENERATE_INFOPLIST_FILE: true
-    INFOPLIST_KEY_UILaunchScreen_Generation: true
 targets:
   ContextVault:
     type: application
@@ -20,11 +20,11 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.saturdaysinthepark.contextvault
-        INFOPLIST_KEY_NSSiriUsageDescription: "Context Vault lets Siri answer questions using your memories and collections."
-        INFOPLIST_KEY_BGTaskSchedulerPermittedIdentifiers: "com.saturdaysinthepark.contextvault.sync"
     info:
       path: ContextVault/Info.plist
       properties:
+        UILaunchScreen: {}
+        NSSiriUsageDescription: "Context Vault lets Siri answer questions using your memories and collections."
         BGTaskSchedulerPermittedIdentifiers:
           - com.saturdaysinthepark.contextvault.sync
         UIBackgroundModes:
