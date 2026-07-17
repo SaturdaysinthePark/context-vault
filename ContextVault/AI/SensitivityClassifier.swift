@@ -1,5 +1,6 @@
 import Foundation
 import FoundationModels
+import SwiftData
 
 /// On-device sensitivity classification: tags memories personal /
 /// professional / sensitive so private content is auto-hidden from the

@@ -101,6 +101,20 @@ struct CollectionDetailView: View {
             }
         }
         .navigationTitle(collection.name)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                ShareLink(
+                    item: ContextPackExporter.render(
+                        aboutMe: (try? VaultStore.shared.aboutMeCard())
+                            .flatMap { $0.siriVisible ? $0.content : nil },
+                        collections: [ContextPackExporter.input(from: collection)]
+                    ),
+                    preview: SharePreview("\(collection.name) — Context Pack")
+                ) {
+                    Label("Export Context Pack", systemImage: "square.and.arrow.up")
+                }
+            }
+        }
     }
 }
 

@@ -105,6 +105,19 @@ AI surfaces
 - Unit: chunking/normalization; AppIntentsTesting framework for intents
 - Device QA: Spotlight semantic search returns vault items; Siri AI answers from vault content (iOS 27 beta device); in-app chat answers with citations; sync survives background termination
 
+## Iteration 2 — Unabyss-inspired features (July 2026)
+
+Competitive research on [Unabyss](https://unabyss.com) (cloud, MCP-native context layer: persona files like voice.md, sensitivity tagging, per-app permissions, "context builds itself" onboarding, two-way freshness) validated our thesis and inspired these on-device adaptations:
+
+1. **About Me card** — single auto-distilled, editable profile card (`ProfileCard` + `ProfileDistiller`); indexed for Siri; prepended to every chat prompt; distillation never overwrites user edits (pending-suggestion flow).
+2. **Sensitivity auto-tagging** — `SensitivityClassifier` (guided generation) tags memories personal/professional/sensitive during sync; `sensitive` is auto-excluded from the system index with per-memory override.
+3. **Privacy dashboard** (`PrivacyView`) — what Siri can see, counts, per-collection toggles, master kill-switch that empties the index and blocks repopulation.
+4. **Two-way flow** — "Save to vault" on chat answers.
+5. **90-second onboarding** (`OnboardingView`) — connect folder → watch vault build + card distill → done.
+6. **Context Pack export** (`ContextPackExporter`) — Markdown bundle of collections + About Me for use in any other AI.
+
+Positioning vs Unabyss: they serve every AI via cloud MCP; we serve Siri/Apple Intelligence via the on-device semantic index — no server, no account, nothing leaves the phone. Deferred to roadmap: auto-fact extraction from conversations, MCP/App Intents cross-agent surface if Apple ships MCP support for App Intents.
+
 ## Key references
 - WWDC26 240 (App Intents/semantic index), 343/345 (App Intents new), 246 (SpotlightSearchTool), 241 (Foundation Models v2)
 - TN3193 context-window management; IndexedEntity docs; Apple Siri AI newsroom (June 2026); TechCrunch iOS 27 public beta (July 14 2026)

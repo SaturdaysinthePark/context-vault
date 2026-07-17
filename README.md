@@ -24,9 +24,11 @@ iOS 27 is the first iOS release where this is genuinely possible:
 ## Product pillars
 
 1. **Connectors** — Obsidian (vault folder access), Notion (OAuth API), Google Drive (`drive.file` scope), plus free local sources: calendar, contacts, any Markdown folder, share-extension capture.
-2. **In-app "Ask your Vault"** — on-device RAG chat with citations back to source memories.
-3. **System-level Siri answers** — vault content in the Spotlight semantic index; App Schemas; "Show me X in Context Vault."
-4. **Privacy-first** — local-first storage, on-device inference, granular per-collection AI exposure. Your data never touches our servers (there are none).
+2. **About Me card** — an auto-distilled, editable portrait of the user built by the on-device model from their memories; always-on context that answers "who am I?", not just "what did I write?"
+3. **In-app "Ask your Vault"** — on-device RAG chat with citations back to source memories, and one-tap save of answers back into the vault.
+4. **System-level Siri answers** — vault content in the Spotlight semantic index; App Schemas; "Show me X in Context Vault."
+5. **Privacy-first** — local-first storage, on-device inference, sensitivity auto-tagging, a privacy dashboard, and granular per-collection AI exposure. Your data never touches our servers (there are none).
+6. **Context Packs** — export any collection (plus your About Me card) as Markdown for use in ChatGPT, Claude, or any other AI. One vault, every AI.
 
 ## Status
 

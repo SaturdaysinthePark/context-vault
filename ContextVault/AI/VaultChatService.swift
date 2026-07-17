@@ -72,6 +72,14 @@ final class VaultChatService {
     // MARK: iOS 26 — manual retrieve-then-read
 
     private func askWithManualRetrieval(_ question: String, collection: MemoryCollection?) async throws -> Answer {
+        // 0. The About Me card rides along with every question — dense,
+        //    always-on personal context that retrieval can't surface.
+        let aboutMe: String = await MainActor.run {
+            guard let card = try? VaultStore.shared.aboutMeCard(),
+                  card.siriVisible, !card.content.isEmpty else { return "" }
+            return card.content
+        }
+
         // 1. Retrieve candidate memories from the Spotlight index.
         let identifiers = try await SpotlightIndexer.shared.search(question, limit: 8)
         let ids = identifiers.compactMap { UUID(uuidString: $0.replacingOccurrences(of: "memory-", with: "")) }
@@ -90,6 +98,11 @@ final class VaultChatService {
         var contextParts: [String] = []
         var used = 0
         var usedIDs: [UUID] = []
+        if !aboutMe.isEmpty {
+            let profileSection = "## About the user\n\(aboutMe)"
+            contextParts.append(profileSection)
+            used += profileSection.count
+        }
         for memory in memories {
             let snippet = "## \(memory.title)\n\(memory.summary ?? String(memory.body.prefix(Chunker.targetSize)))"
             guard used + snippet.count <= contextBudget else { break }

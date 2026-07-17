@@ -26,9 +26,14 @@ struct VaultView: View {
                         description: Text("Connect a source or capture your first memory.")
                     )
                 } else {
-                    List(filtered) { memory in
-                        NavigationLink(value: memory.id) {
-                            MemoryRow(memory: memory)
+                    List {
+                        AboutMeCardSection()
+                        Section("Memories") {
+                            ForEach(filtered) { memory in
+                                NavigationLink(value: memory.id) {
+                                    MemoryRow(memory: memory)
+                                }
+                            }
                         }
                     }
                     .searchable(text: $searchText, prompt: "Search memories")
@@ -89,11 +94,38 @@ struct MemoryRow: View {
 }
 
 struct MemoryDetailView: View {
-    let memory: Memory
+    @Bindable var memory: Memory
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
+                if memory.sensitivity != .unclassified {
+                    HStack {
+                        Label(memory.sensitivity.rawValue.capitalized, systemImage: "tag")
+                            .font(.caption)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(.quaternary, in: Capsule())
+                        Spacer()
+                    }
+                }
+
+                if memory.sensitivity == .sensitive {
+                    Toggle(isOn: $memory.forceSiriVisible) {
+                        Label("Show to Siri anyway", systemImage: "sparkles")
+                            .font(.callout)
+                    }
+                    .padding(12)
+                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
+                    .onChange(of: memory.forceSiriVisible) {
+                        let snapshot = MemorySnapshot(memory)
+                        Task {
+                            try? await SpotlightIndexer.shared.reindex(memories: [snapshot])
+                        }
+                        try? memory.modelContext?.save()
+                    }
+                }
+
                 if let summary = memory.summary {
                     Text(summary)
                         .font(.callout)

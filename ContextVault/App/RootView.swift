@@ -1,6 +1,9 @@
 import SwiftUI
 
 struct RootView: View {
+    @AppStorage("hasOnboarded") private var hasOnboarded = false
+    @State private var showOnboarding = false
+
     var body: some View {
         TabView {
             Tab("Vault", systemImage: "archivebox") {
@@ -17,8 +20,12 @@ struct RootView: View {
             }
         }
         .task {
+            if !hasOnboarded { showOnboarding = true }
             await SyncManager.shared.syncAll()
             SyncManager.shared.scheduleBackgroundSync()
+        }
+        .fullScreenCover(isPresented: $showOnboarding) {
+            OnboardingView()
         }
     }
 }

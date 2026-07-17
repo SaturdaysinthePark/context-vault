@@ -13,7 +13,7 @@ final class VaultStore {
     private init() {
         do {
             container = try ModelContainer(
-                for: Memory.self, MemoryCollection.self, SourceAccount.self
+                for: Memory.self, MemoryCollection.self, SourceAccount.self, ProfileCard.self
             )
         } catch {
             fatalError("Failed to create ModelContainer: \(error)")
@@ -76,6 +76,26 @@ final class VaultStore {
         try context.fetch(FetchDescriptor<MemoryCollection>(
             sortBy: [SortDescriptor(\.name)]
         ))
+    }
+
+    // MARK: About Me card
+
+    /// The single About Me card, created on first access.
+    func aboutMeCard() throws -> ProfileCard {
+        if let existing = try context.fetch(FetchDescriptor<ProfileCard>()).first {
+            return existing
+        }
+        let card = ProfileCard()
+        context.insert(card)
+        try context.save()
+        return card
+    }
+
+    /// Push the About Me card into (or remove it from) the Spotlight index.
+    func reindexAboutMeCard() async throws {
+        let card = try aboutMeCard()
+        let snapshot = ProfileCardSnapshot(card)
+        try await SpotlightIndexer.shared.reindexAboutMe(snapshot)
     }
 
     // MARK: Mutation + index maintenance

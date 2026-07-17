@@ -63,14 +63,25 @@ final class SyncManager: @unchecked Sendable {
             return
         }
 
+        var ingestedAnything = false
         for account in accounts {
             guard let connector = connectors[account.sourceType] else { continue }
             do {
                 let result = try await connector.sync(account: account)
                 try await ingest(result, account: account)
+                ingestedAnything = ingestedAnything || !result.items.isEmpty
             } catch {
                 // Individual source failures shouldn't stop the others.
                 continue
+            }
+        }
+
+        // Post-sync intelligence: tag sensitivity on new memories, then
+        // refresh the About Me card. Best-effort, on-device.
+        if #available(iOS 26.0, *) {
+            await SensitivityClassifier.classifyPending()
+            if ingestedAnything {
+                await ProfileDistiller().distill()
             }
         }
     }

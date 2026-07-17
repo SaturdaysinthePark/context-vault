@@ -68,6 +68,13 @@ struct SourcesView: View {
             }
             .navigationTitle("Sources")
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    NavigationLink {
+                        PrivacyView()
+                    } label: {
+                        Label("Privacy", systemImage: "hand.raised")
+                    }
+                }
                 ToolbarItem(placement: .primaryAction) {
                     Button {
                         syncing = true

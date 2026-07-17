@@ -114,6 +114,7 @@ struct ChatView: View {
 
 struct MessageBubble: View {
     let message: ChatView.Message
+    @State private var saved = false
 
     var body: some View {
         VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 6) {
@@ -124,8 +125,32 @@ struct MessageBubble: View {
                     in: RoundedRectangle(cornerRadius: 16)
                 )
 
-            if !message.sourceMemoryIDs.isEmpty {
-                SourceCitations(memoryIDs: message.sourceMemoryIDs)
+            if message.role == .assistant {
+                HStack(spacing: 8) {
+                    if !message.sourceMemoryIDs.isEmpty {
+                        SourceCitations(memoryIDs: message.sourceMemoryIDs)
+                    }
+                    Spacer(minLength: 0)
+                    // Two-way flow: answers can feed back into the vault,
+                    // so context reflects what you actually do with it.
+                    Button {
+                        saved = true
+                        let text = message.text
+                        Task { @MainActor in
+                            let title = String(text.prefix(60))
+                                .components(separatedBy: .newlines).first ?? "From chat"
+                            let memory = Memory(title: title, body: text)
+                            try? await VaultStore.shared.upsert(memory)
+                        }
+                    } label: {
+                        Label(saved ? "Saved" : "Save to vault",
+                              systemImage: saved ? "checkmark" : "tray.and.arrow.down")
+                            .font(.caption)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.mini)
+                    .disabled(saved)
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: message.role == .user ? .trailing : .leading)

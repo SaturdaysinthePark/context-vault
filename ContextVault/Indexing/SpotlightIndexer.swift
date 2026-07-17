@@ -22,8 +22,15 @@ actor SpotlightIndexer {
         CSSearchableIndex(name: "context-vault-memories")
     }
 
+    /// Master kill-switch set from the Privacy dashboard: when off, nothing
+    /// is ever (re)indexed, so a sync can't quietly repopulate the index.
+    private var exposureEnabled: Bool {
+        UserDefaults.standard.object(forKey: "siriExposureEnabled") as? Bool ?? true
+    }
+
     /// Index (or reindex) a batch of memories, honoring Siri visibility.
     func reindex(memories: [MemorySnapshot]) async throws {
+        guard exposureEnabled else { return }
         let (visible, hidden) = memories.partitioned { $0.isSiriVisible }
 
         if !hidden.isEmpty {
@@ -56,6 +63,26 @@ actor SpotlightIndexer {
         try await index.deleteSearchableItems(withDomainIdentifiers: [Self.domainIdentifier])
     }
 
+    /// Index (or remove) the About Me card so Siri can answer identity
+    /// questions ("what projects am I working on?") from it.
+    func reindexAboutMe(_ card: ProfileCardSnapshot) async throws {
+        guard exposureEnabled else { return }
+        guard card.siriVisible, !card.content.isEmpty else {
+            try await index.deleteSearchableItems(withIdentifiers: [card.identifier])
+            return
+        }
+        let attributes = CSSearchableItemAttributeSet(contentType: .text)
+        attributes.title = "About Me"
+        attributes.textContent = card.content
+        attributes.contentDescription = "Your distilled profile"
+        let item = CSSearchableItem(
+            uniqueIdentifier: card.identifier,
+            domainIdentifier: Self.domainIdentifier,
+            attributeSet: attributes
+        )
+        try await index.indexSearchableItems([item])
+    }
+
     /// iOS 26 fallback retrieval: query the index directly and return the
     /// top matching memory identifiers. On iOS 27, SpotlightSearchTool
     /// replaces this path inside the Foundation Models session.
@@ -72,6 +99,19 @@ actor SpotlightIndexer {
             }
         }
         return identifiers
+    }
+}
+
+/// Sendable snapshot of the About Me card for the indexing actor.
+struct ProfileCardSnapshot: Sendable {
+    var content: String
+    var siriVisible: Bool
+
+    var identifier: String { "profile-about-me" }
+
+    init(_ card: ProfileCard) {
+        self.content = card.content
+        self.siriVisible = card.siriVisible
     }
 }
 

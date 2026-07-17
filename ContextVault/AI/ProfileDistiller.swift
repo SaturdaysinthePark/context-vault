@@ -1,26 +1,33 @@
 import Foundation
 import FoundationModels
 
-/// Distills raw memories into Profile Cards — the on-device equivalent of a
-/// persona file (voice.md / professional.md), built by the Foundation Model
-/// instead of a cloud pipeline.
+/// Distills raw memories into the "About Me" card — the on-device
+/// equivalent of a persona file, built by the Foundation Model instead of a
+/// cloud pipeline. Runs after sync passes and on demand from the card UI.
 ///
-/// Rules:
-/// - Runs after sync passes and on demand from the Profile tab.
-/// - Never overwrites a card the user edited: fresh drafts land in
-///   `pendingSuggestion` for the user to accept or dismiss.
+/// Never overwrites a card the user edited: fresh drafts land in
+/// `pendingSuggestion` for the user to accept or dismiss.
 @available(iOS 26.0, *)
 final class ProfileDistiller {
 
     @Generable
     struct CardDraft {
-        @Guide(description: "Concise Markdown bullet points (max 8) capturing what the source material reveals. No preamble, no headings.")
+        @Guide(description: """
+            Markdown with exactly these four short sections, each a heading \
+            followed by bullet points: '## Who I am' (role, work, identity), \
+            '## Current projects', '## How I write' (tone, style), \
+            '## Preferences' (tools, habits, likes). Only include facts the \
+            notes actually support — never invent. Omit a section entirely \
+            if the notes reveal nothing for it.
+            """)
         var markdown: String
     }
 
-    /// Distill (or refresh) every card kind from recent memories.
-    func distillAll() async {
-        guard case .available = SystemLanguageModel.default.availability else { return }
+    /// Build or refresh the About Me card from recent memories.
+    /// Returns true when a new draft was produced.
+    @discardableResult
+    func distill() async -> Bool {
+        guard case .available = SystemLanguageModel.default.availability else { return false }
 
         let material = await MainActor.run { () -> String in
             let memories = (try? VaultStore.shared.recentMemories(limit: 30)) ?? []
@@ -28,22 +35,16 @@ final class ProfileDistiller {
                 .map { "### \($0.title)\n\($0.summary ?? String($0.body.prefix(600)))" }
                 .joined(separator: "\n\n")
         }
-        guard !material.isEmpty else { return }
+        guard !material.isEmpty else { return false }
 
-        for kind in ProfileCardKind.allCases {
-            await distill(kind: kind, from: material)
-        }
-    }
-
-    private func distill(kind: ProfileCardKind, from material: String) async {
-        // Keep the prompt inside the on-device window: instructions +
-        // material + draft must fit ~4K tokens on iOS 26.
+        // Keep the prompt inside the on-device window (~4K tokens on iOS 26):
+        // instructions + material + draft must all fit.
         let clipped = String(material.prefix(2200 * 4))
         let session = LanguageModelSession(instructions: """
-            You analyze a user's personal notes and distill a profile card \
-            about \(kind.distillationFocus). Only state things the notes \
-            actually support — never invent. If the notes reveal nothing \
-            relevant, respond with the single word: NOTHING
+            You analyze a user's personal notes and distill a concise \
+            profile of who they are. Only state things the notes actually \
+            support. If the notes reveal nothing about the user, respond \
+            with the single word: NOTHING
             """)
 
         do {
@@ -52,10 +53,10 @@ final class ProfileDistiller {
                 generating: CardDraft.self
             )
             let draft = response.content.markdown.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !draft.isEmpty, draft != "NOTHING" else { return }
+            guard !draft.isEmpty, draft != "NOTHING" else { return false }
 
             try await MainActor.run {
-                let card = try VaultStore.shared.profileCard(kind: kind)
+                let card = try VaultStore.shared.aboutMeCard()
                 if card.userEdited && !card.content.isEmpty {
                     card.pendingSuggestion = draft
                 } else {
@@ -64,10 +65,13 @@ final class ProfileDistiller {
                 }
                 card.lastDistilledAt = .now
                 try VaultStore.shared.context.save()
-                Task { try? await VaultStore.shared.reindexProfileCards() }
+                Task { try? await VaultStore.shared.reindexAboutMeCard() }
             }
+            return true
         } catch {
-            // Distillation is best-effort; a failed card just stays stale.
+            // Distillation is best-effort; a failed pass just leaves the
+            // card stale.
+            return false
         }
     }
 }
