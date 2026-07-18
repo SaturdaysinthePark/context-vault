@@ -10,5 +10,5 @@ import Foundation
 /// When `googleClientID` is empty, the Google Drive connect sheet falls
 /// back to asking for one — useful for other developers cloning this repo.
 enum ConnectorSecrets {
-    static let googleClientID = ""
+    static let googleClientID = "335267564860-lfrauq7acq48um299pbpasnn4kceqj9v.apps.googleusercontent.com"
 }
