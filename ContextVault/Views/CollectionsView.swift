@@ -73,6 +73,7 @@ struct CollectionDetailView: View {
     @State private var showingAdd = false
     @State private var showingEdit = false
     @State private var unsubscribeTarget: CollectionRule?
+    @State private var collapsedGroups: Set<UUID?> = []
 
     /// The collection scaffolded by source: each involved source lists its
     /// subscriptions (folders / entire source) and its hand-picked singles;
@@ -233,46 +234,80 @@ struct CollectionDetailView: View {
         let grouped = sourceGroups
         let hasSubscriptions = grouped.contains { !$0.subscriptions.isEmpty }
         ForEach(Array(grouped.enumerated()), id: \.offset) { index, group in
+            let isCollapsed = collapsedGroups.contains(group.accountID)
             Section {
-                // Subscribed folders / entire-source rows: chevron into contents.
-                ForEach(group.subscriptions, id: \.0.id) { rule, matched in
-                    NavigationLink {
-                        SourceMemoriesView(title: rule.folderPath ?? "Everything", memories: matched)
-                    } label: {
-                        HStack {
-                            Label(
-                                rule.kind == .folder ? (rule.folderPath ?? "Folder") : "Everything from this source",
-                                systemImage: rule.kind == .folder ? "folder.badge.gearshape" : "externaldrive.connected.to.line.below"
-                            )
-                            Spacer()
-                            Text("\(matched.count)")
-                                .foregroundStyle(.secondary)
+                if !isCollapsed {
+                    // Subscribed folders / entire-source rows: chevron into contents.
+                    ForEach(group.subscriptions, id: \.0.id) { rule, matched in
+                        NavigationLink {
+                            SourceMemoriesView(title: rule.folderPath ?? "Everything", memories: matched)
+                        } label: {
+                            HStack {
+                                Label(
+                                    rule.kind == .folder ? (rule.folderPath ?? "Folder") : "Everything from this source",
+                                    systemImage: rule.kind == .folder ? "folder.badge.gearshape" : "externaldrive.connected.to.line.below"
+                                )
+                                Spacer()
+                                Text("\(matched.count)")
+                                    .foregroundStyle(.secondary)
+                                    .font(.caption)
+                            }
+                        }
+                        .swipeActions(edge: .trailing) {
+                            Button("Unsubscribe", role: .destructive) {
+                                unsubscribeTarget = rule
+                            }
+                        }
+                    }
+
+                    // Hand-picked singles: title only — the header already
+                    // names the source, so no preview or source line.
+                    ForEach(group.singles) { memory in
+                        NavigationLink {
+                            MemoryDetailView(memory: memory)
+                        } label: {
+                            HStack {
+                                Text(memory.title).lineLimit(1)
+                                if memory.fidelity == .metadataOnly {
+                                    Text("metadata only")
+                                        .font(.caption2)
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 2)
+                                        .background(.quaternary, in: Capsule())
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                    }
+                    .onDelete { offsets in
+                        removeMemories(group.singles, at: offsets)
+                    }
+                }
+            } header: {
+                Button {
+                    withAnimation {
+                        if isCollapsed {
+                            collapsedGroups.remove(group.accountID)
+                        } else {
+                            collapsedGroups.insert(group.accountID)
+                        }
+                    }
+                } label: {
+                    HStack {
+                        Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
+                            .font(.caption2)
+                        Label(group.title, systemImage: group.iconName)
+                        Spacer()
+                        if isCollapsed {
+                            Text("\(group.subscriptions.count + group.singles.count)")
                                 .font(.caption)
                         }
                     }
-                    .swipeActions(edge: .trailing) {
-                        Button("Unsubscribe", role: .destructive) {
-                            unsubscribeTarget = rule
-                        }
-                    }
                 }
-
-                // Hand-picked singles from this source, inline.
-                ForEach(group.singles) { memory in
-                    NavigationLink {
-                        MemoryDetailView(memory: memory)
-                    } label: {
-                        MemoryRow(memory: memory)
-                    }
-                }
-                .onDelete { offsets in
-                    removeMemories(group.singles, at: offsets)
-                }
-            } header: {
-                Label(group.title, systemImage: group.iconName)
+                .buttonStyle(.plain)
             } footer: {
                 if index == grouped.count - 1 && hasSubscriptions {
-                    Text("Folders and sources stay live — new files in them join this collection on every sync. Swipe a folder to unsubscribe.")
+                    Text("Folders and sources stay live — new files in them join this collection on every sync. Swipe a folder to unsubscribe. Tap a source name to collapse it.")
                 }
             }
         }

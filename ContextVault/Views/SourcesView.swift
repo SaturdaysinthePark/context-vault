@@ -52,7 +52,7 @@ struct SourcesView: View {
                     }
                 }
 
-                Section("Add a source") {
+                Section {
                     Button {
                         pickerSourceType = .obsidian
                         showingFolderPicker = true
@@ -65,15 +65,26 @@ struct SourcesView: View {
                     } label: {
                         Label("Markdown folder", systemImage: "folder")
                     }
-                    Button {
-                        showingGoogleDriveConnect = true
-                    } label: {
-                        Label("Google Drive", systemImage: "externaldrive")
+                    // One-account sources disappear once connected.
+                    if !accounts.contains(where: { $0.sourceType == .googleDrive }) {
+                        Button {
+                            showingGoogleDriveConnect = true
+                        } label: {
+                            Label("Google Drive", systemImage: "externaldrive")
+                        }
                     }
-                    Button {
-                        showingNotionConnect = true
-                    } label: {
-                        Label("Notion", systemImage: "n.square")
+                    if !accounts.contains(where: { $0.sourceType == .notion }) {
+                        Button {
+                            showingNotionConnect = true
+                        } label: {
+                            Label("Notion", systemImage: "n.square")
+                        }
+                    }
+                } header: {
+                    Text("Add a source")
+                } footer: {
+                    if accounts.contains(where: { $0.sourceType == .googleDrive || $0.sourceType == .notion }) {
+                        Text("Already-connected sources are managed above. Folder sources can be added more than once.")
                     }
                 }
             }
