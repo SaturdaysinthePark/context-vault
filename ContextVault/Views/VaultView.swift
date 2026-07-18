@@ -95,6 +95,7 @@ struct MemoryRow: View {
 
 struct MemoryDetailView: View {
     @Bindable var memory: Memory
+    @Query(sort: \MemoryCollection.name) private var allCollections: [MemoryCollection]
 
     var body: some View {
         ScrollView {
@@ -139,6 +140,39 @@ struct MemoryDetailView: View {
         }
         .navigationTitle(memory.title)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Menu {
+                    if allCollections.isEmpty {
+                        Text("No collections yet")
+                    }
+                    ForEach(allCollections) { collection in
+                        Button {
+                            toggleMembership(collection)
+                        } label: {
+                            if memory.collections.contains(where: { $0.id == collection.id }) {
+                                Label(collection.name, systemImage: "checkmark")
+                            } else {
+                                Text(collection.name)
+                            }
+                        }
+                    }
+                } label: {
+                    Label("Collections", systemImage: "square.stack.3d.up")
+                }
+            }
+        }
+    }
+
+    private func toggleMembership(_ collection: MemoryCollection) {
+        if let index = memory.collections.firstIndex(where: { $0.id == collection.id }) {
+            memory.collections.remove(at: index)
+        } else {
+            memory.collections.append(collection)
+        }
+        try? memory.modelContext?.save()
+        let snapshot = MemorySnapshot(memory)
+        Task { try? await SpotlightIndexer.shared.reindex(memories: [snapshot]) }
     }
 }
 

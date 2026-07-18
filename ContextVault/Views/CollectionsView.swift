@@ -62,6 +62,7 @@ struct CollectionsView: View {
 
 struct CollectionDetailView: View {
     @Bindable var collection: MemoryCollection
+    @State private var showingAddMemories = false
 
     var body: some View {
         List {
@@ -87,8 +88,14 @@ struct CollectionDetailView: View {
             }
 
             Section("Memories") {
+                Button {
+                    showingAddMemories = true
+                } label: {
+                    Label("Add memories", systemImage: "plus.circle")
+                }
                 if collection.memories.isEmpty {
-                    Text("No memories yet.").foregroundStyle(.secondary)
+                    Text("No memories yet — add some from your vault.")
+                        .foregroundStyle(.secondary)
                 } else {
                     ForEach(collection.memories) { memory in
                         NavigationLink {
@@ -101,6 +108,9 @@ struct CollectionDetailView: View {
             }
         }
         .navigationTitle(collection.name)
+        .sheet(isPresented: $showingAddMemories) {
+            AddMemoriesSheet(collection: collection)
+        }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 ShareLink(
@@ -115,6 +125,68 @@ struct CollectionDetailView: View {
                 }
             }
         }
+    }
+}
+
+/// Multi-select picker for adding/removing vault memories in a collection.
+struct AddMemoriesSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Bindable var collection: MemoryCollection
+    @Query(sort: \Memory.modifiedAt, order: .reverse) private var memories: [Memory]
+    @State private var searchText = ""
+
+    private var filtered: [Memory] {
+        guard !searchText.isEmpty else { return memories }
+        return memories.filter {
+            $0.title.localizedCaseInsensitiveContains(searchText) ||
+            $0.body.localizedCaseInsensitiveContains(searchText)
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            List(filtered) { memory in
+                let isMember = memory.collections.contains { $0.id == collection.id }
+                Button {
+                    toggle(memory)
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(memory.title).lineLimit(1).foregroundStyle(.primary)
+                            Text(memory.body)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                        Spacer()
+                        Image(systemName: isMember ? "checkmark.circle.fill" : "circle")
+                            .foregroundStyle(isMember ? AnyShapeStyle(.tint) : AnyShapeStyle(.tertiary))
+                    }
+                }
+            }
+            .searchable(text: $searchText, prompt: "Search your vault")
+            .navigationTitle("Add to \(collection.name)")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        dismiss()
+                        Task { @MainActor in
+                            try? await VaultStore.shared.reindexCollection(collection)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func toggle(_ memory: Memory) {
+        if let index = memory.collections.firstIndex(where: { $0.id == collection.id }) {
+            memory.collections.remove(at: index)
+        } else {
+            memory.collections.append(collection)
+        }
+        try? memory.modelContext?.save()
     }
 }
 
