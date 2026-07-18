@@ -55,9 +55,19 @@ final class SyncManager: @unchecked Sendable {
         let accounts: [SourceAccountSnapshot]
         do {
             accounts = try await MainActor.run {
-                try VaultStore.shared.context
+                let collections = try VaultStore.shared.allCollections()
+                return try VaultStore.shared.context
                     .fetch(FetchDescriptor<SourceAccount>())
-                    .map(SourceAccountSnapshot.init)
+                    .map { account in
+                        var snapshot = SourceAccountSnapshot(account)
+                        // Collection-subscribed folders earn enrichment
+                        // effort even when sync scope is "everything".
+                        snapshot.ruleFolderIDs = collections
+                            .flatMap(\.rules)
+                            .filter { $0.sourceAccountID == account.id && $0.kind == .folder }
+                            .compactMap(\.folderID)
+                        return snapshot
+                    }
             }
         } catch {
             return
@@ -88,24 +98,37 @@ final class SyncManager: @unchecked Sendable {
 
     private func ingest(_ result: SyncResult, account: SourceAccountSnapshot) async throws {
         for item in result.items {
-            let normalized = MarkdownNormalizer.normalize(
-                filename: item.filename,
-                rawMarkdown: item.rawContent
-            )
+            // Full-fidelity text goes through Markdown normalization;
+            // extracted/stub content arrives pre-rendered from the enricher.
+            let title: String
+            let body: String
+            if item.fidelity == .full {
+                let normalized = MarkdownNormalizer.normalize(
+                    filename: item.filename,
+                    rawMarkdown: item.rawContent
+                )
+                title = normalized.title
+                body = normalized.body
+            } else {
+                title = (item.filename as NSString).deletingPathExtension
+                body = item.rawContent
+            }
 
             try await MainActor.run {
                 let existing = try VaultStore.shared.memory(sourceRef: item.sourceRef)
                 let memory = existing ?? Memory(
-                    title: normalized.title,
-                    body: normalized.body,
+                    title: title,
+                    body: body,
                     sourceType: account.sourceType,
                     sourceRef: item.sourceRef
                 )
-                memory.title = normalized.title
-                memory.body = normalized.body
+                memory.title = title
+                memory.body = body
                 memory.modifiedAt = item.modifiedAt
                 memory.sourcePath = item.folderPath
                 memory.sourceFolderPath = item.folderIDPath
+                memory.fidelity = item.fidelity
+                memory.fileKind = item.fileKind
                 VaultStore.shared.context.insert(memory)
                 try VaultStore.shared.context.save()
             }

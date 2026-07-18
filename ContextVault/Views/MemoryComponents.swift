@@ -21,6 +21,14 @@ struct MemoryRow: View {
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
                     .lineLimit(1)
+                if let kind = memory.fileKind, let badge = memory.fidelity.badge {
+                    Text("\(kind) · \(badge)")
+                        .font(.caption2)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(.quaternary, in: Capsule())
+                        .foregroundStyle(.secondary)
+                }
                 if !memory.isSiriVisible {
                     Label("Hidden from Siri", systemImage: "eye.slash")
                         .font(.caption2)
@@ -58,9 +66,19 @@ struct MemoryDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                Label(provenance, systemImage: "arrow.triangle.branch")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                HStack {
+                    Label(provenance, systemImage: "arrow.triangle.branch")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    if let kind = memory.fileKind, let badge = memory.fidelity.badge {
+                        Text("\(kind) · \(badge)")
+                            .font(.caption2)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(.quaternary, in: Capsule())
+                            .foregroundStyle(.secondary)
+                    }
+                }
 
                 if memory.sensitivity != .unclassified {
                     HStack {

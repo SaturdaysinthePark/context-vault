@@ -10,6 +10,11 @@ struct SourceItem: Sendable {
     var folderPath: String? = nil
     /// Machine ancestor chain (see Memory.sourceFolderPath).
     var folderIDPath: String? = nil
+    /// Content fidelity (default full). Non-full items arrive pre-rendered:
+    /// rawContent is the final body, filename minus extension is the title.
+    var fidelity: ContentFidelity = .full
+    /// Short type label for display ("PDF", "EPUB", …).
+    var fileKind: String? = nil
 }
 
 /// Resolved folder location, keyed by folder ID in `SyncResult.folderPaths`.
@@ -44,6 +49,10 @@ struct SourceAccountSnapshot: Sendable {
     var displayName: String
     var configData: Data?
     var syncCursor: String?
+    /// Folder IDs subscribed by collection rules for this account — files
+    /// inside them get enrichment effort even when the sync scope is
+    /// "everything" (populated by SyncManager before each pass).
+    var ruleFolderIDs: [String] = []
 
     init(_ account: SourceAccount) {
         self.id = account.id

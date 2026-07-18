@@ -20,6 +20,23 @@ enum Sensitivity: String, Codable, CaseIterable, Sendable {
     case sensitive
 }
 
+/// How much of the underlying file's content this memory carries.
+enum ContentFidelity: String, Codable, CaseIterable, Sendable {
+    case full          // native text (docs, markdown)
+    case extracted     // text pulled out of a binary (PDF, EPUB, DOCX)
+    case captioned     // OCR/caption enrichment (images)
+    case metadataOnly  // name, type, location — content unreadable
+
+    var badge: String? {
+        switch self {
+        case .full: nil
+        case .extracted: "text extracted"
+        case .captioned: "captioned"
+        case .metadataOnly: "metadata only"
+        }
+    }
+}
+
 /// A normalized piece of knowledge: a note, document, page, or highlight.
 @Model
 final class Memory {
@@ -39,6 +56,10 @@ final class Memory {
     /// (root→immediate parent, IDs stable across rename/move). Obsidian: same
     /// as sourcePath. Notion: "/<parentPageID>" (one level, v1).
     var sourceFolderPath: String?
+    /// How much of the file's content this memory carries (nil = full).
+    var fidelityRaw: String?
+    /// Short file-type label for display ("PDF", "EPUB", "Photo", "Archive").
+    var fileKind: String?
     var sensitivityRaw: String
     /// User override: expose to Siri even though classified sensitive.
     var forceSiriVisible: Bool
@@ -56,6 +77,11 @@ final class Memory {
     var sensitivity: Sensitivity {
         get { Sensitivity(rawValue: sensitivityRaw) ?? .unclassified }
         set { sensitivityRaw = newValue.rawValue }
+    }
+
+    var fidelity: ContentFidelity {
+        get { fidelityRaw.flatMap(ContentFidelity.init(rawValue:)) ?? .full }
+        set { fidelityRaw = newValue.rawValue }
     }
 
     /// True when the memory may enter the system index: its collections
