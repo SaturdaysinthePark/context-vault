@@ -43,10 +43,25 @@ struct MemoryRow: View {
 struct MemoryDetailView: View {
     @Bindable var memory: Memory
     @Query(sort: \MemoryCollection.name) private var allCollections: [MemoryCollection]
+    @Query(sort: \SourceAccount.createdAt) private var accounts: [SourceAccount]
+
+    private var provenance: String {
+        let sourceName = accounts.first { account in
+            sourceRefPrefixes(for: account).contains { memory.sourceRef?.hasPrefix($0) == true }
+        }?.displayName ?? memory.sourceType.rawValue
+        if let path = memory.sourcePath {
+            return "\(sourceName) · \(path)"
+        }
+        return sourceName
+    }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
+                Label(provenance, systemImage: "arrow.triangle.branch")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
                 if memory.sensitivity != .unclassified {
                     HStack {
                         Label(memory.sensitivity.rawValue.capitalized, systemImage: "tag")

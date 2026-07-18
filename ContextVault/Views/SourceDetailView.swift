@@ -77,17 +77,11 @@ struct SourceDetailView: View {
                 }
             }
 
-            Section("Memories") {
-                if memories.isEmpty {
-                    Text("Nothing synced yet.").foregroundStyle(.secondary)
-                } else {
-                    ForEach(memories) { memory in
-                        NavigationLink {
-                            MemoryDetailView(memory: memory)
-                        } label: {
-                            MemoryRow(memory: memory)
-                        }
-                    }
+            Section {
+                NavigationLink {
+                    SourceMemoriesView(title: account.displayName, memories: memories)
+                } label: {
+                    Label("View memories (\(memories.count))", systemImage: "archivebox")
                 }
             }
 
@@ -154,6 +148,60 @@ struct SourceDetailView: View {
         Task {
             await SyncManager.shared.syncAll()
             syncing = false
+        }
+    }
+}
+
+/// A source's memories, mirrored in the source's own folder structure:
+/// one section per folder path, root items first, searchable.
+struct SourceMemoriesView: View {
+    let title: String
+    let memories: [Memory]
+    @State private var searchText = ""
+
+    private var filtered: [Memory] {
+        guard !searchText.isEmpty else { return memories }
+        return memories.filter {
+            $0.title.localizedCaseInsensitiveContains(searchText) ||
+            $0.body.localizedCaseInsensitiveContains(searchText)
+        }
+    }
+
+    /// Folder path → memories, root ("" key) first, then alphabetical.
+    private var grouped: [(folder: String, memories: [Memory])] {
+        let dictionary = Dictionary(grouping: filtered) { $0.sourcePath ?? "" }
+        return dictionary
+            .sorted { a, b in
+                if a.key.isEmpty != b.key.isEmpty { return a.key.isEmpty }
+                return a.key.localizedCaseInsensitiveCompare(b.key) == .orderedAscending
+            }
+            .map { (folder: $0.key, memories: $0.value.sorted { $0.modifiedAt > $1.modifiedAt }) }
+    }
+
+    var body: some View {
+        List {
+            ForEach(grouped, id: \.folder) { group in
+                Section {
+                    ForEach(group.memories) { memory in
+                        NavigationLink {
+                            MemoryDetailView(memory: memory)
+                        } label: {
+                            MemoryRow(memory: memory)
+                        }
+                    }
+                } header: {
+                    Label(group.folder.isEmpty ? "Top level" : group.folder,
+                          systemImage: "folder")
+                }
+            }
+        }
+        .searchable(text: $searchText, prompt: "Search this source")
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+        .overlay {
+            if memories.isEmpty {
+                ContentUnavailableView("Nothing synced yet", systemImage: "archivebox")
+            }
         }
     }
 }

@@ -69,23 +69,74 @@ struct CollectionsView: View {
 struct CollectionDetailView: View {
     @Bindable var collection: MemoryCollection
     @Environment(\.modelContext) private var context
+    @Query(sort: \SourceAccount.createdAt) private var accounts: [SourceAccount]
     @State private var showingAdd = false
     @State private var showingEdit = false
     @State private var unsubscribeTarget: CollectionRule?
 
-    /// Memories grouped by the first synced folder/source they match, plus
-    /// the hand-picked remainder. Order: rules in creation order, then
-    /// hand-picked.
-    private var groups: [(rule: CollectionRule?, memories: [Memory])] {
-        var remaining = collection.memories.sorted { $0.modifiedAt > $1.modifiedAt }
-        var result: [(CollectionRule?, [Memory])] = []
+    /// The collection scaffolded by source: each involved source lists its
+    /// subscriptions (folders / entire source) and its hand-picked singles;
+    /// manual captures land in a final "Captured" group.
+    private struct SourceGroup {
+        var accountID: UUID?          // nil = Captured
+        var title: String
+        var iconName: String
+        var subscriptions: [(rule: CollectionRule, memories: [Memory])] = []
+        var singles: [Memory] = []
+    }
 
+    private var sourceGroups: [SourceGroup] {
+        var remaining = collection.memories.sorted { $0.modifiedAt > $1.modifiedAt }
+
+        // 1. Subscriptions claim their matches (first-match dedupe).
+        var subscriptionsByAccount: [UUID: [(CollectionRule, [Memory])]] = [:]
         for rule in collection.rules {
             let matched = remaining.filter { CollectionRuleEngine.matches(rule, $0) }
             remaining.removeAll { memory in matched.contains { $0.id == memory.id } }
-            result.append((rule, matched))
+            subscriptionsByAccount[rule.sourceAccountID, default: []].append((rule, matched))
         }
-        result.append((nil, remaining))
+
+        // 2. Leftover members are singles, grouped by owning account.
+        var singlesByAccount: [UUID: [Memory]] = [:]
+        var captured: [Memory] = []
+        for memory in remaining {
+            if let owner = accounts.first(where: { account in
+                sourceRefPrefixes(for: account).contains { memory.sourceRef?.hasPrefix($0) == true }
+            }) {
+                singlesByAccount[owner.id, default: []].append(memory)
+            } else {
+                captured.append(memory)
+            }
+        }
+
+        // 3. Assemble in account order; keep groups that have content.
+        var result: [SourceGroup] = []
+        var coveredAccountIDs = Set<UUID>()
+        for account in accounts {
+            let subs = subscriptionsByAccount[account.id] ?? []
+            let singles = singlesByAccount[account.id] ?? []
+            coveredAccountIDs.insert(account.id)
+            guard !subs.isEmpty || !singles.isEmpty else { continue }
+            result.append(SourceGroup(
+                accountID: account.id,
+                title: account.displayName,
+                iconName: icon(for: account.sourceType),
+                subscriptions: subs,
+                singles: singles
+            ))
+        }
+        // Rules whose source was disconnected still render.
+        for (accountID, subs) in subscriptionsByAccount where !coveredAccountIDs.contains(accountID) {
+            result.append(SourceGroup(
+                accountID: accountID,
+                title: "Disconnected source",
+                iconName: "questionmark.folder",
+                subscriptions: subs
+            ))
+        }
+        if !captured.isEmpty {
+            result.append(SourceGroup(accountID: nil, title: "Captured", iconName: "square.and.pencil", singles: captured))
+        }
         return result
     }
 
@@ -179,47 +230,49 @@ struct CollectionDetailView: View {
 
     @ViewBuilder
     private var memoryGroups: some View {
-        let grouped = groups
+        let grouped = sourceGroups
+        let hasSubscriptions = grouped.contains { !$0.subscriptions.isEmpty }
         ForEach(Array(grouped.enumerated()), id: \.offset) { index, group in
-            let isLastSyncedGroup = group.rule != nil
-                && (index + 1 >= grouped.count || grouped[index + 1].rule == nil)
             Section {
-                if group.memories.isEmpty {
-                    Text(group.rule == nil ? "No hand-picked memories." : "Nothing synced from here yet.")
-                        .foregroundStyle(.secondary)
-                        .font(.callout)
-                } else {
-                    ForEach(group.memories) { memory in
-                        NavigationLink {
-                            MemoryDetailView(memory: memory)
-                        } label: {
-                            MemoryRow(memory: memory)
+                // Subscribed folders / entire-source rows: chevron into contents.
+                ForEach(group.subscriptions, id: \.0.id) { rule, matched in
+                    NavigationLink {
+                        SourceMemoriesView(title: rule.folderPath ?? "Everything", memories: matched)
+                    } label: {
+                        HStack {
+                            Label(
+                                rule.kind == .folder ? (rule.folderPath ?? "Folder") : "Everything from this source",
+                                systemImage: rule.kind == .folder ? "folder.badge.gearshape" : "externaldrive.connected.to.line.below"
+                            )
+                            Spacer()
+                            Text("\(matched.count)")
+                                .foregroundStyle(.secondary)
+                                .font(.caption)
                         }
                     }
-                    .onDelete { offsets in
-                        removeMemories(group.memories, at: offsets)
+                    .swipeActions(edge: .trailing) {
+                        Button("Unsubscribe", role: .destructive) {
+                            unsubscribeTarget = rule
+                        }
                     }
+                }
+
+                // Hand-picked singles from this source, inline.
+                ForEach(group.singles) { memory in
+                    NavigationLink {
+                        MemoryDetailView(memory: memory)
+                    } label: {
+                        MemoryRow(memory: memory)
+                    }
+                }
+                .onDelete { offsets in
+                    removeMemories(group.singles, at: offsets)
                 }
             } header: {
-                if let rule = group.rule {
-                    HStack {
-                        Label("\(rule.displayName) (\(group.memories.count))",
-                              systemImage: rule.kind == .folder ? "folder.badge.gearshape" : "externaldrive.connected.to.line.below")
-                        Spacer()
-                        Menu {
-                            Button("Unsubscribe…", role: .destructive) {
-                                unsubscribeTarget = rule
-                            }
-                        } label: {
-                            Image(systemName: "ellipsis.circle")
-                        }
-                    }
-                } else {
-                    Text("Hand-picked (\(group.memories.count))")
-                }
+                Label(group.title, systemImage: group.iconName)
             } footer: {
-                if isLastSyncedGroup {
-                    Text("Synced folders stay live — new files in them join this collection on every sync.")
+                if index == grouped.count - 1 && hasSubscriptions {
+                    Text("Folders and sources stay live — new files in them join this collection on every sync. Swipe a folder to unsubscribe.")
                 }
             }
         }
