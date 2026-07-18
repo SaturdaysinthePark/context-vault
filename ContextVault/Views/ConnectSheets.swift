@@ -10,6 +10,9 @@ struct GoogleDriveConnectSheet: View {
     @State private var clientID = ConnectorSecrets.googleClientID
     @State private var working = false
     @State private var errorMessage: String?
+    /// Set once sign-in succeeds; the sheet then shows the scoping step.
+    @State private var signedInTokens: GoogleTokens?
+    @State private var showingFolderPicker = false
 
     /// True when the app ships with a baked-in client ID — the normal case.
     /// The paste field only appears for developers running without one.
@@ -18,41 +21,16 @@ struct GoogleDriveConnectSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                if isConfigured {
-                    Section {
-                        Label("Your Docs and text files sync directly from Google to this device. Nothing passes through any other server.", systemImage: "lock.shield")
-                            .font(.callout)
-                    }
+                if let tokens = signedInTokens {
+                    scopeStep(tokens: tokens)
                 } else {
-                    Section {
-                        TextField("xxxx.apps.googleusercontent.com", text: $clientID)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                            .font(.footnote.monospaced())
-                    } header: {
-                        Text("iOS OAuth Client ID")
-                    } footer: {
-                        Text("Developer setup: this build has no baked-in client ID. Create one per docs/CONNECTORS.md and paste it here, or set ConnectorSecrets.googleClientID.")
-                    }
+                    signInStep
                 }
 
                 if let errorMessage {
                     Section {
                         Text(errorMessage).foregroundStyle(.red)
                     }
-                }
-
-                Section {
-                    Button {
-                        connect()
-                    } label: {
-                        if working {
-                            HStack { ProgressView(); Text("Signing in…") }
-                        } else {
-                            Label("Sign in with Google", systemImage: "person.badge.key")
-                        }
-                    }
-                    .disabled(working || !clientID.hasSuffix(".apps.googleusercontent.com"))
                 }
             }
             .navigationTitle("Google Drive")
@@ -62,35 +40,110 @@ struct GoogleDriveConnectSheet: View {
                     Button("Cancel") { dismiss() }
                 }
             }
+            .sheet(isPresented: $showingFolderPicker) {
+                if let tokens = signedInTokens {
+                    DriveFolderPickerView(
+                        title: "Choose folders to sync",
+                        loader: {
+                            try await DriveFolderService.fetch(
+                                tokens: tokens,
+                                clientID: trimmedClientID,
+                                keychainKey: nil
+                            )
+                        },
+                        onConfirm: { folders in
+                            finalize(tokens: tokens, selectedFolderIDs: folders.map(\.id))
+                        }
+                    )
+                }
+            }
         }
     }
 
-    private func connect() {
+    @ViewBuilder
+    private var signInStep: some View {
+        if isConfigured {
+            Section {
+                Label("Your Docs and text files sync directly from Google to this device. Nothing passes through any other server.", systemImage: "lock.shield")
+                    .font(.callout)
+            }
+        } else {
+            Section {
+                TextField("xxxx.apps.googleusercontent.com", text: $clientID)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .font(.footnote.monospaced())
+            } header: {
+                Text("iOS OAuth Client ID")
+            } footer: {
+                Text("Developer setup: this build has no baked-in client ID. Create one per docs/CONNECTORS.md and paste it here, or set ConnectorSecrets.googleClientID.")
+            }
+        }
+
+        Section {
+            Button {
+                signIn()
+            } label: {
+                if working {
+                    HStack { ProgressView(); Text("Signing in…") }
+                } else {
+                    Label("Sign in with Google", systemImage: "person.badge.key")
+                }
+            }
+            .disabled(working || !clientID.hasSuffix(".apps.googleusercontent.com"))
+        }
+    }
+
+    private func scopeStep(tokens: GoogleTokens) -> some View {
+        Section {
+            Button {
+                finalize(tokens: tokens, selectedFolderIDs: nil)
+            } label: {
+                Label("Sync everything", systemImage: "externaldrive.badge.checkmark")
+            }
+            Button {
+                showingFolderPicker = true
+            } label: {
+                Label("Choose folders…", systemImage: "folder.badge.gearshape")
+            }
+        } header: {
+            Text("What should sync?")
+        } footer: {
+            Text("You're signed in. Sync your whole Drive, or pick specific folders (subfolders included). You can change this anytime from the source's settings.")
+        }
+    }
+
+    private var trimmedClientID: String {
+        clientID.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func signIn() {
         working = true
         errorMessage = nil
-        let trimmedID = clientID.trimmingCharacters(in: .whitespacesAndNewlines)
 
         Task { @MainActor in
             defer { working = false }
             do {
-                let tokens = try await GoogleDriveAuth().signIn(clientID: trimmedID)
-
-                let config = GoogleDriveConfig(clientID: trimmedID)
-                let account = SourceAccount(
-                    sourceType: .googleDrive,
-                    displayName: "Google Drive",
-                    configData: try? JSONEncoder().encode(config)
-                )
-                KeychainStore.save(tokens, for: account.keychainKey)
-                context.insert(account)
-                try context.save()
-
-                dismiss()
-                Task { await SyncManager.shared.syncAll() }
+                signedInTokens = try await GoogleDriveAuth().signIn(clientID: trimmedClientID)
             } catch {
                 errorMessage = error.localizedDescription
             }
         }
+    }
+
+    private func finalize(tokens: GoogleTokens, selectedFolderIDs: [String]?) {
+        let config = GoogleDriveConfig(clientID: trimmedClientID, selectedFolderIDs: selectedFolderIDs)
+        let account = SourceAccount(
+            sourceType: .googleDrive,
+            displayName: "Google Drive",
+            configData: try? JSONEncoder().encode(config)
+        )
+        KeychainStore.save(tokens, for: account.keychainKey)
+        context.insert(account)
+        try? context.save()
+
+        dismiss()
+        Task { await SyncManager.shared.syncAll() }
     }
 }
 

@@ -65,6 +65,39 @@ struct DriveFolderService {
         return DriveFolderService(nodes: nodes)
     }
 
+    /// Convenience for UI callers (folder picker): fetch using stored
+    /// tokens, refreshing once on 401/expiry and persisting the refresh
+    /// under `keychainKey` when provided.
+    static func fetch(tokens: GoogleTokens, clientID: String, keychainKey: String?) async throws -> DriveFolderService {
+        var current = tokens
+        if current.isExpired {
+            current = try await GoogleDriveAuth.refresh(tokens: current, clientID: clientID)
+            if let keychainKey { KeychainStore.save(current, for: keychainKey) }
+        }
+
+        func authorized(_ url: URL) async throws -> Data {
+            var request = URLRequest(url: url)
+            request.setValue("Bearer \(current.accessToken)", forHTTPHeaderField: "Authorization")
+            let (data, response) = try await URLSession.shared.data(for: request)
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            if status == 401 {
+                current = try await GoogleDriveAuth.refresh(tokens: current, clientID: clientID)
+                if let keychainKey { KeychainStore.save(current, for: keychainKey) }
+                var retry = URLRequest(url: url)
+                retry.setValue("Bearer \(current.accessToken)", forHTTPHeaderField: "Authorization")
+                let (retryData, retryResponse) = try await URLSession.shared.data(for: retry)
+                guard (retryResponse as? HTTPURLResponse)?.statusCode == 200 else {
+                    throw ConnectorError.accessDenied
+                }
+                return retryData
+            }
+            guard status == 200 else { throw ConnectorError.accessDenied }
+            return data
+        }
+
+        return try await fetch(request: authorized)
+    }
+
     // MARK: Path resolution
 
     /// Resolve a folder's display path and ID chain (root → this folder).

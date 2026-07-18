@@ -18,16 +18,20 @@ struct SourcesView: View {
             List {
                 Section {
                     ForEach(accounts) { account in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(account.displayName).font(.headline)
-                            if let last = account.lastSyncedAt {
-                                Text("Last synced \(last.formatted(.relative(presentation: .named)))")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            } else {
-                                Text("Not synced yet")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                        NavigationLink {
+                            SourceDetailView(account: account)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(account.displayName).font(.headline)
+                                if let last = account.lastSyncedAt {
+                                    Text("Last synced \(last.formatted(.relative(presentation: .named)))")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                } else {
+                                    Text("Not synced yet")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
                             }
                         }
                     }
@@ -43,6 +47,8 @@ struct SourcesView: View {
                 } footer: {
                     if accounts.isEmpty {
                         Text("Nothing connected yet. Your vault syncs entirely on device.")
+                    } else {
+                        Text("Tap a source to browse its memories, adjust sync scope, or disconnect.")
                     }
                 }
 
