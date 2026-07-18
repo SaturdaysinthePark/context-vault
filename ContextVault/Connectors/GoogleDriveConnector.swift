@@ -90,8 +90,17 @@ struct GoogleDriveConnector: Connector {
                         content = FileEnricher.stubBody(name: file.name, kind: "scanned PDF", folderPath: paths?.path, modified: modified)
                         fidelity = .metadataOnly
                     }
-                case .metadataOnly, .zipDocument, .image:
-                    // zipDocument/image get real extraction in later phases.
+                case .zipDocument:
+                    if let data = (try? await fetchData(of: file, tokens: &tokens, config: config, account: account)) ?? nil,
+                       let extracted = ZipDocumentExtractor.extract(data: data, filename: file.name) {
+                        content = extracted.text
+                        fidelity = extracted.fidelity
+                    } else {
+                        content = FileEnricher.stubBody(name: file.name, kind: kind, folderPath: paths?.path, modified: modified)
+                        fidelity = .metadataOnly
+                    }
+                case .metadataOnly, .image:
+                    // Images get OCR/caption in a later phase.
                     content = FileEnricher.stubBody(name: file.name, kind: kind, folderPath: paths?.path, modified: modified)
                     fidelity = .metadataOnly
                 case .skip:

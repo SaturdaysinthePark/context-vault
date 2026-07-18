@@ -46,9 +46,9 @@ enum FileEnricher {
             return .pdf
         case "application/epub+zip",
              "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-            return .metadataOnly // → .zipDocument in phase 3
+            return .zipDocument
         case "application/zip", "application/x-zip-compressed":
-            return inEnrichmentScope ? .metadataOnly : .skip // richer listing in phase 3
+            return inEnrichmentScope ? .zipDocument : .skip
         case let mime where mime.hasPrefix("image/"):
             return inEnrichmentScope ? .metadataOnly : .skip // → .image in phase 4
         case let mime where mime.hasPrefix("audio/") || mime.hasPrefix("video/"):
