@@ -1,0 +1,23 @@
+{
+  "/Users/sabtain/git/context-vault/ContextVault/App/ContextVaultApp.swift" : {
+    "const-values" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/ContextVaultApp.swiftconstvalues",
+    "dependencies" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/ContextVaultApp.d",
+    "diagnostics" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/ContextVaultApp.dia",
+    "object" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/ContextVaultApp.o",
+    "swift-dependencies" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/ContextVaultApp.swiftdeps"
+  },
+  "/Users/sabtain/git/context-vault/ContextVault/Ingestion/MarkdownNormalizer.swift" : {
+    "const-values" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/MarkdownNormalizer.swiftconstvalues",
+    "dependencies" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/MarkdownNormalizer.d",
+    "diagnostics" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/MarkdownNormalizer.dia",
+    "object" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/MarkdownNormalizer.o",
+    "swift-dependencies" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/MarkdownNormalizer.swiftdeps"
+  },
+  "/Users/sabtain/git/context-vault/ContextVault/Intents/ContextVaultShortcuts.swift" : {
+    "const-values" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/ContextVaultShortcuts.swiftconstvalues",
+    "dependencies" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/ContextVaultShortcuts.d",
+    "diagnostics" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/ContextVaultShortcuts.dia",
+    "object" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/ContextVaultShortcuts.o",
+    "swift-dependencies" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/ContextVaultShortcuts.swiftdeps"
+  }
+}

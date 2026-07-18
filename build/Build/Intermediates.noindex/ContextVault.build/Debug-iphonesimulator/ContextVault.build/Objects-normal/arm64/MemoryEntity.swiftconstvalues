@@ -1,0 +1,435 @@
+[
+  {
+    "typeName": "ContextVault.MemoryEntity",
+    "mangledTypeName": "12ContextVault12MemoryEntityV",
+    "kind": "struct",
+    "file": "/Users/sabtain/git/context-vault/ContextVault/Intents/MemoryEntity.swift",
+    "line": 9,
+    "conformances": [
+      "AppIntents.AppEntity",
+      "AppIntents.IndexedEntity",
+      "AppIntents.AppValue",
+      "AppIntents.DisplayRepresentable",
+      "Swift.Identifiable",
+      "AppIntents.PersistentlyIdentifiable",
+      "AppIntents.TypeDisplayRepresentable",
+      "AppIntents._IntentValue",
+      "Swift.Sendable",
+      "AppIntents.InstanceDisplayRepresentable",
+      "Swift.SendableMetatype",
+      "Foundation.CustomLocalizedStringResourceConvertible"
+    ],
+    "allConformances": [
+      {
+        "protocolName": "AppIntents.AppEntity",
+        "conformanceDefiningModule": "ContextVault"
+      },
+      {
+        "protocolName": "AppIntents.IndexedEntity",
+        "conformanceDefiningModule": "ContextVault"
+      },
+      {
+        "protocolName": "AppIntents.AppValue",
+        "conformanceDefiningModule": "ContextVault"
+      },
+      {
+        "protocolName": "AppIntents.DisplayRepresentable",
+        "conformanceDefiningModule": "ContextVault"
+      },
+      {
+        "protocolName": "Swift.Identifiable",
+        "conformanceDefiningModule": "ContextVault"
+      },
+      {
+        "protocolName": "AppIntents.PersistentlyIdentifiable",
+        "conformanceDefiningModule": "ContextVault"
+      },
+      {
+        "protocolName": "AppIntents.TypeDisplayRepresentable",
+        "conformanceDefiningModule": "ContextVault"
+      },
+      {
+        "protocolName": "AppIntents._IntentValue",
+        "conformanceDefiningModule": "ContextVault"
+      },
+      {
+        "protocolName": "Swift.Sendable",
+        "conformanceDefiningModule": "ContextVault"
+      },
+      {
+        "protocolName": "AppIntents.InstanceDisplayRepresentable",
+        "conformanceDefiningModule": "ContextVault"
+      },
+      {
+        "protocolName": "Swift.SendableMetatype",
+        "conformanceDefiningModule": "ContextVault"
+      },
+      {
+        "protocolName": "Foundation.CustomLocalizedStringResourceConvertible",
+        "conformanceDefiningModule": "ContextVault"
+      }
+    ],
+    "associatedTypeAliases": [
+      {
+        "typeAliasName": "DefaultQuery",
+        "substitutedTypeName": "ContextVault.MemoryEntityQuery",
+        "substitutedMangledTypeName": "12ContextVault17MemoryEntityQueryV"
+      },
+      {
+        "typeAliasName": "ID",
+        "substitutedTypeName": "Foundation.UUID",
+        "substitutedMangledTypeName": "10Foundation4UUIDV"
+      },
+      {
+        "typeAliasName": "ValueType",
+        "substitutedTypeName": "ContextVault.MemoryEntity",
+        "substitutedMangledTypeName": "12ContextVault12MemoryEntityV"
+      },
+      {
+        "typeAliasName": "UnwrappedType",
+        "substitutedTypeName": "ContextVault.MemoryEntity",
+        "substitutedMangledTypeName": "12ContextVault12MemoryEntityV"
+      },
+      {
+        "typeAliasName": "Specification",
+        "substitutedTypeName": "AppIntents.EmptyResolverSpecification<ContextVault.MemoryEntity>",
+        "substitutedMangledTypeName": "10AppIntents26EmptyResolverSpecificationVy12ContextVault12MemoryEntityVG"
+      }
+    ],
+    "properties": [
+      {
+        "label": "id",
+        "type": "Foundation.UUID",
+        "mangledTypeName": "n/a - deprecated",
+        "isStatic": "false",
+        "isComputed": "false",
+        "file": "/Users/sabtain/git/context-vault/ContextVault/Intents/MemoryEntity.swift",
+        "line": 13,
+        "valueKind": "Runtime"
+      },
+      {
+        "label": "_title",
+        "type": "AppIntents.EntityProperty<Swift.String>",
+        "mangledTypeName": "n/a - deprecated",
+        "isStatic": "false",
+        "isComputed": "false",
+        "file": "/Users/sabtain/git/context-vault/ContextVault/Intents/MemoryEntity.swift",
+        "line": 16,
+        "valueKind": "InitCall",
+        "value": {
+          "type": "AppIntents.EntityProperty<Swift.String>",
+          "arguments": [
+            {
+              "label": "indexingKey",
+              "type": "Swift.PartialKeyPath<CoreSpotlight.CSSearchableItemAttributeSet>",
+              "valueKind": "KeyPath",
+              "value": {
+                "path": "title",
+                "rootType": "CoreSpotlight.CSSearchableItemAttributeSet",
+                "components": [
+                  {
+                    "label": "title",
+                    "type": "Swift.Optional<Swift.String>"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "label": "_content",
+        "type": "AppIntents.EntityProperty<Swift.String>",
+        "mangledTypeName": "n/a - deprecated",
+        "isStatic": "false",
+        "isComputed": "false",
+        "file": "/Users/sabtain/git/context-vault/ContextVault/Intents/MemoryEntity.swift",
+        "line": 19,
+        "valueKind": "InitCall",
+        "value": {
+          "type": "AppIntents.EntityProperty<Swift.String>",
+          "arguments": [
+            {
+              "label": "indexingKey",
+              "type": "Swift.PartialKeyPath<CoreSpotlight.CSSearchableItemAttributeSet>",
+              "valueKind": "KeyPath",
+              "value": {
+                "path": "textContent",
+                "rootType": "CoreSpotlight.CSSearchableItemAttributeSet",
+                "components": [
+                  {
+                    "label": "textContent",
+                    "type": "Swift.Optional<Swift.String>"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "label": "collectionName",
+        "type": "Swift.Optional<Swift.String>",
+        "mangledTypeName": "n/a - deprecated",
+        "isStatic": "false",
+        "isComputed": "false",
+        "file": "/Users/sabtain/git/context-vault/ContextVault/Intents/MemoryEntity.swift",
+        "line": 21,
+        "valueKind": "NilLiteral"
+      },
+      {
+        "label": "typeDisplayRepresentation",
+        "type": "AppIntents.TypeDisplayRepresentation",
+        "mangledTypeName": "n/a - deprecated",
+        "isStatic": "true",
+        "isComputed": "false",
+        "file": "/Users/sabtain/git/context-vault/ContextVault/Intents/MemoryEntity.swift",
+        "line": 10,
+        "valueKind": "InitCall",
+        "value": {
+          "type": "AppIntents.TypeDisplayRepresentation",
+          "arguments": [
+            {
+              "label": "name",
+              "type": "Foundation.LocalizedStringResource",
+              "valueKind": "RawLiteral",
+              "value": "Memory"
+            },
+            {
+              "label": "numericFormat",
+              "type": "Swift.Optional<Foundation.LocalizedStringResource>",
+              "valueKind": "RawLiteral",
+              "value": "nil"
+            }
+          ]
+        }
+      },
+      {
+        "label": "defaultQuery",
+        "type": "ContextVault.MemoryEntityQuery",
+        "mangledTypeName": "n/a - deprecated",
+        "isStatic": "true",
+        "isComputed": "false",
+        "file": "/Users/sabtain/git/context-vault/ContextVault/Intents/MemoryEntity.swift",
+        "line": 11,
+        "valueKind": "InitCall",
+        "value": {
+          "type": "ContextVault.MemoryEntityQuery",
+          "arguments": []
+        }
+      },
+      {
+        "label": "title",
+        "type": "Swift.String",
+        "mangledTypeName": "n/a - deprecated",
+        "isStatic": "false",
+        "isComputed": "true",
+        "file": "/Users/sabtain/git/context-vault/ContextVault/Intents/MemoryEntity.swift",
+        "line": 16,
+        "valueKind": "InitCall",
+        "value": {
+          "type": "AppIntents.EntityProperty<Swift.String>",
+          "arguments": [
+            {
+              "label": "indexingKey",
+              "type": "Swift.PartialKeyPath<CoreSpotlight.CSSearchableItemAttributeSet>",
+              "valueKind": "KeyPath",
+              "value": {
+                "path": "title",
+                "rootType": "CoreSpotlight.CSSearchableItemAttributeSet",
+                "components": [
+                  {
+                    "label": "title",
+                    "type": "Swift.Optional<Swift.String>"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "propertyWrappers": [
+          {
+            "type": "AppIntents.EntityProperty",
+            "file": "/Users/sabtain/git/context-vault/ContextVault/Intents/MemoryEntity.swift",
+            "line": 15,
+            "arguments": [
+              {
+                "label": "indexingKey",
+                "type": "Swift.PartialKeyPath<CoreSpotlight.CSSearchableItemAttributeSet>",
+                "valueKind": "KeyPath",
+                "value": {
+                  "path": "title",
+                  "rootType": "CoreSpotlight.CSSearchableItemAttributeSet",
+                  "components": [
+                    {
+                      "label": "title",
+                      "type": "Swift.Optional<Swift.String>"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "label": "$title",
+        "type": "AppIntents.EntityProperty<Swift.String>",
+        "mangledTypeName": "n/a - deprecated",
+        "isStatic": "false",
+        "isComputed": "true",
+        "file": "/Users/sabtain/git/context-vault/ContextVault/Intents/MemoryEntity.swift",
+        "line": 16,
+        "valueKind": "Runtime"
+      },
+      {
+        "label": "content",
+        "type": "Swift.String",
+        "mangledTypeName": "n/a - deprecated",
+        "isStatic": "false",
+        "isComputed": "true",
+        "file": "/Users/sabtain/git/context-vault/ContextVault/Intents/MemoryEntity.swift",
+        "line": 19,
+        "valueKind": "InitCall",
+        "value": {
+          "type": "AppIntents.EntityProperty<Swift.String>",
+          "arguments": [
+            {
+              "label": "indexingKey",
+              "type": "Swift.PartialKeyPath<CoreSpotlight.CSSearchableItemAttributeSet>",
+              "valueKind": "KeyPath",
+              "value": {
+                "path": "textContent",
+                "rootType": "CoreSpotlight.CSSearchableItemAttributeSet",
+                "components": [
+                  {
+                    "label": "textContent",
+                    "type": "Swift.Optional<Swift.String>"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "propertyWrappers": [
+          {
+            "type": "AppIntents.EntityProperty",
+            "file": "/Users/sabtain/git/context-vault/ContextVault/Intents/MemoryEntity.swift",
+            "line": 18,
+            "arguments": [
+              {
+                "label": "indexingKey",
+                "type": "Swift.PartialKeyPath<CoreSpotlight.CSSearchableItemAttributeSet>",
+                "valueKind": "KeyPath",
+                "value": {
+                  "path": "textContent",
+                  "rootType": "CoreSpotlight.CSSearchableItemAttributeSet",
+                  "components": [
+                    {
+                      "label": "textContent",
+                      "type": "Swift.Optional<Swift.String>"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "label": "$content",
+        "type": "AppIntents.EntityProperty<Swift.String>",
+        "mangledTypeName": "n/a - deprecated",
+        "isStatic": "false",
+        "isComputed": "true",
+        "file": "/Users/sabtain/git/context-vault/ContextVault/Intents/MemoryEntity.swift",
+        "line": 19,
+        "valueKind": "Runtime"
+      },
+      {
+        "label": "displayRepresentation",
+        "type": "AppIntents.DisplayRepresentation",
+        "mangledTypeName": "n/a - deprecated",
+        "isStatic": "false",
+        "isComputed": "true",
+        "file": "/Users/sabtain/git/context-vault/ContextVault/Intents/MemoryEntity.swift",
+        "line": 23,
+        "valueKind": "Runtime"
+      }
+    ]
+  },
+  {
+    "typeName": "ContextVault.MemoryEntityQuery",
+    "mangledTypeName": "12ContextVault17MemoryEntityQueryV",
+    "kind": "struct",
+    "file": "/Users/sabtain/git/context-vault/ContextVault/Intents/MemoryEntity.swift",
+    "line": 39,
+    "conformances": [
+      "AppIntents.EntityQuery",
+      "AppIntents.EntityStringQuery",
+      "AppIntents.DynamicOptionsProvider",
+      "AppIntents.PersistentlyIdentifiable",
+      "Swift.Sendable",
+      "AppIntents._SupportsAppDependencies",
+      "Swift.SendableMetatype",
+      "Swift.BitwiseCopyable"
+    ],
+    "allConformances": [
+      {
+        "protocolName": "AppIntents.EntityQuery",
+        "conformanceDefiningModule": "ContextVault"
+      },
+      {
+        "protocolName": "AppIntents.EntityStringQuery",
+        "conformanceDefiningModule": "ContextVault"
+      },
+      {
+        "protocolName": "AppIntents.DynamicOptionsProvider",
+        "conformanceDefiningModule": "ContextVault"
+      },
+      {
+        "protocolName": "AppIntents.PersistentlyIdentifiable",
+        "conformanceDefiningModule": "ContextVault"
+      },
+      {
+        "protocolName": "Swift.Sendable",
+        "conformanceDefiningModule": "ContextVault"
+      },
+      {
+        "protocolName": "AppIntents._SupportsAppDependencies",
+        "conformanceDefiningModule": "ContextVault"
+      },
+      {
+        "protocolName": "Swift.SendableMetatype",
+        "conformanceDefiningModule": "ContextVault"
+      },
+      {
+        "protocolName": "Swift.BitwiseCopyable",
+        "conformanceDefiningModule": "ContextVault"
+      }
+    ],
+    "associatedTypeAliases": [
+      {
+        "typeAliasName": "Entity",
+        "substitutedTypeName": "ContextVault.MemoryEntity",
+        "substitutedMangledTypeName": "12ContextVault12MemoryEntityV"
+      },
+      {
+        "typeAliasName": "Result",
+        "substitutedTypeName": "Swift.Array<ContextVault.MemoryEntity>",
+        "substitutedMangledTypeName": "Say12ContextVault12MemoryEntityVG"
+      },
+      {
+        "typeAliasName": "Result",
+        "substitutedTypeName": "Swift.Array<ContextVault.MemoryEntity>",
+        "substitutedMangledTypeName": "Say12ContextVault12MemoryEntityVG"
+      },
+      {
+        "typeAliasName": "DefaultValue",
+        "substitutedTypeName": "ContextVault.MemoryEntity",
+        "substitutedMangledTypeName": "12ContextVault12MemoryEntityV"
+      }
+    ],
+    "properties": []
+  }
+]

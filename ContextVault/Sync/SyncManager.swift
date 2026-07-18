@@ -11,8 +11,8 @@ final class SyncManager: @unchecked Sendable {
     private let connectors: [SourceType: any Connector] = [
         .obsidian: ObsidianConnector(),
         .files: ObsidianConnector(), // any Markdown folder uses the same reader
-        // .notion: NotionConnector(),      // Phase 3
-        // .googleDrive: GoogleDriveConnector(), // Phase 3
+        .notion: NotionConnector(),
+        .googleDrive: GoogleDriveConnector(),
     ]
 
     // MARK: Background scheduling

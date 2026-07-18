@@ -1,0 +1,23 @@
+{
+  "/Users/sabtain/git/context-vault/ContextVault/Intents/AskVaultIntent.swift" : {
+    "const-values" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/AskVaultIntent.swiftconstvalues",
+    "dependencies" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/AskVaultIntent.d",
+    "diagnostics" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/AskVaultIntent.dia",
+    "object" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/AskVaultIntent.o",
+    "swift-dependencies" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/AskVaultIntent.swiftdeps"
+  },
+  "/Users/sabtain/git/context-vault/ContextVault/Intents/CaptureMemoryIntent.swift" : {
+    "const-values" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/CaptureMemoryIntent.swiftconstvalues",
+    "dependencies" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/CaptureMemoryIntent.d",
+    "diagnostics" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/CaptureMemoryIntent.dia",
+    "object" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/CaptureMemoryIntent.o",
+    "swift-dependencies" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/CaptureMemoryIntent.swiftdeps"
+  },
+  "/Users/sabtain/git/context-vault/ContextVault/Views/AboutMeCardView.swift" : {
+    "const-values" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/AboutMeCardView.swiftconstvalues",
+    "dependencies" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/AboutMeCardView.d",
+    "diagnostics" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/AboutMeCardView.dia",
+    "object" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/AboutMeCardView.o",
+    "swift-dependencies" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/AboutMeCardView.swiftdeps"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "/Users/sabtain/git/context-vault/ContextVault/AI/ProfileDistiller.swift" : {
+    "const-values" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/ProfileDistiller.swiftconstvalues",
+    "dependencies" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/ProfileDistiller.d",
+    "diagnostics" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/ProfileDistiller.dia",
+    "object" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/ProfileDistiller.o",
+    "swift-dependencies" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/ProfileDistiller.swiftdeps"
+  },
+  "/Users/sabtain/git/context-vault/ContextVault/App/RootView.swift" : {
+    "const-values" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/RootView.swiftconstvalues",
+    "dependencies" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/RootView.d",
+    "diagnostics" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/RootView.dia",
+    "object" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/RootView.o",
+    "swift-dependencies" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/RootView.swiftdeps"
+  },
+  "/Users/sabtain/git/context-vault/ContextVault/Models/ProfileCard.swift" : {
+    "const-values" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/ProfileCard.swiftconstvalues",
+    "dependencies" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/ProfileCard.d",
+    "diagnostics" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/ProfileCard.dia",
+    "object" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/ProfileCard.o",
+    "swift-dependencies" : "/Users/sabtain/git/context-vault/build/Build/Intermediates.noindex/ContextVault.build/Debug-iphonesimulator/ContextVault.build/Objects-normal/arm64/ProfileCard.swiftdeps"
+  }
+}

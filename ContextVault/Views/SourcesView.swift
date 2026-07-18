@@ -9,6 +9,8 @@ struct SourcesView: View {
     @Query(sort: \SourceAccount.createdAt) private var accounts: [SourceAccount]
     @State private var showingFolderPicker = false
     @State private var pickerSourceType: SourceType = .obsidian
+    @State private var showingGoogleDriveConnect = false
+    @State private var showingNotionConnect = false
     @State private var syncing = false
 
     var body: some View {
@@ -30,7 +32,10 @@ struct SourcesView: View {
                         }
                     }
                     .onDelete { offsets in
-                        for offset in offsets { context.delete(accounts[offset]) }
+                        for offset in offsets {
+                            KeychainStore.delete(for: accounts[offset].keychainKey)
+                            context.delete(accounts[offset])
+                        }
                         try? context.save()
                     }
                 } header: {
@@ -54,15 +59,15 @@ struct SourcesView: View {
                     } label: {
                         Label("Markdown folder", systemImage: "folder")
                     }
-                    LabeledContent {
-                        Text("Coming soon").font(.caption).foregroundStyle(.secondary)
-                    } label: {
-                        Label("Notion", systemImage: "n.square")
-                    }
-                    LabeledContent {
-                        Text("Coming soon").font(.caption).foregroundStyle(.secondary)
+                    Button {
+                        showingGoogleDriveConnect = true
                     } label: {
                         Label("Google Drive", systemImage: "externaldrive")
+                    }
+                    Button {
+                        showingNotionConnect = true
+                    } label: {
+                        Label("Notion", systemImage: "n.square")
                     }
                 }
             }
@@ -98,6 +103,12 @@ struct SourcesView: View {
             ) { result in
                 guard case .success(let url) = result else { return }
                 addFolderSource(url)
+            }
+            .sheet(isPresented: $showingGoogleDriveConnect) {
+                GoogleDriveConnectSheet()
+            }
+            .sheet(isPresented: $showingNotionConnect) {
+                NotionConnectSheet()
             }
         }
     }
