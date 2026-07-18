@@ -7,22 +7,33 @@ import SwiftData
 struct GoogleDriveConnectSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
-    @State private var clientID = ""
+    @State private var clientID = ConnectorSecrets.googleClientID
     @State private var working = false
     @State private var errorMessage: String?
+
+    /// True when the app ships with a baked-in client ID — the normal case.
+    /// The paste field only appears for developers running without one.
+    private var isConfigured: Bool { !ConnectorSecrets.googleClientID.isEmpty }
 
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    TextField("xxxx.apps.googleusercontent.com", text: $clientID)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .font(.footnote.monospaced())
-                } header: {
-                    Text("iOS OAuth Client ID")
-                } footer: {
-                    Text("One-time setup: create a Google Cloud project with the Drive API enabled and an iOS OAuth client, then paste its ID here. Full steps are in docs/CONNECTORS.md. Your files sync directly from Google to this device.")
+                if isConfigured {
+                    Section {
+                        Label("Your Docs and text files sync directly from Google to this device. Nothing passes through any other server.", systemImage: "lock.shield")
+                            .font(.callout)
+                    }
+                } else {
+                    Section {
+                        TextField("xxxx.apps.googleusercontent.com", text: $clientID)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .font(.footnote.monospaced())
+                    } header: {
+                        Text("iOS OAuth Client ID")
+                    } footer: {
+                        Text("Developer setup: this build has no baked-in client ID. Create one per docs/CONNECTORS.md and paste it here, or set ConnectorSecrets.googleClientID.")
+                    }
                 }
 
                 if let errorMessage {
