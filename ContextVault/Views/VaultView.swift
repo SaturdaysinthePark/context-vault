@@ -71,9 +71,11 @@ struct MemoryRow: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
             HStack(spacing: 6) {
-                Label(memory.sourceType.rawValue, systemImage: sourceIcon)
+                Label(memory.sourcePath.map { "\(memory.sourceType.rawValue) · \($0)" } ?? memory.sourceType.rawValue,
+                      systemImage: sourceIcon)
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
+                    .lineLimit(1)
                 if !memory.isSiriVisible {
                     Label("Hidden from Siri", systemImage: "eye.slash")
                         .font(.caption2)

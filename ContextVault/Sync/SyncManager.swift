@@ -104,7 +104,28 @@ final class SyncManager: @unchecked Sendable {
                 memory.title = normalized.title
                 memory.body = normalized.body
                 memory.modifiedAt = item.modifiedAt
+                memory.sourcePath = item.folderPath
+                memory.sourceFolderPath = item.folderIDPath
                 VaultStore.shared.context.insert(memory)
+                try VaultStore.shared.context.save()
+            }
+        }
+
+        // Path-refresh pass: with a fresh folder map, rebuild paths for ALL
+        // of this account's memories from their immediate-parent folder ID —
+        // pure local work that keeps names current after renames/moves.
+        if let folderPaths = result.folderPaths {
+            try await MainActor.run {
+                let prefix = "gdrive:\(account.id.uuidString):"
+                let memories = try VaultStore.shared.memories(sourceRefPrefix: prefix)
+                for memory in memories {
+                    guard let idPath = memory.sourceFolderPath,
+                          let parentID = idPath.components(separatedBy: "/").last,
+                          !parentID.isEmpty,
+                          let fresh = folderPaths[parentID] else { continue }
+                    memory.sourcePath = fresh.path
+                    memory.sourceFolderPath = fresh.idPath
+                }
                 try VaultStore.shared.context.save()
             }
         }

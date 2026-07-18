@@ -32,6 +32,13 @@ final class Memory {
     var sourceTypeRaw: String
     /// Stable reference into the source system (file path, Notion page ID, Drive file ID).
     var sourceRef: String?
+    /// Human-readable folder path within the source (e.g. "/Projects/Acme").
+    /// Display only — can go stale after renames until the next sync refresh.
+    var sourcePath: String?
+    /// Machine ancestor chain for rule matching. Drive: "/<folderID>/<folderID>"
+    /// (root→immediate parent, IDs stable across rename/move). Obsidian: same
+    /// as sourcePath. Notion: "/<parentPageID>" (one level, v1).
+    var sourceFolderPath: String?
     var sensitivityRaw: String
     /// User override: expose to Siri even though classified sensitive.
     var forceSiriVisible: Bool

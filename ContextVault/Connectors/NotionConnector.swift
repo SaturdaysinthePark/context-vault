@@ -45,11 +45,17 @@ struct NotionConnector: Connector {
                 let content = try await fetchPageContent(pageID: id, token: token)
                 guard !content.isEmpty else { continue }
 
+                // One-level parent for future subtree rules (full ancestor
+                // chains deferred — search only returns the immediate parent).
+                let parentPageID = (pageObject["parent"] as? [String: Any])?["page_id"] as? String
+
                 items.append(SourceItem(
                     sourceRef: "notion:\(account.id.uuidString):\(id)",
                     filename: "\(title).md",
                     rawContent: "# \(title)\n\n\(content)",
-                    modifiedAt: Self.parseISO(lastEdited) ?? .now
+                    modifiedAt: Self.parseISO(lastEdited) ?? .now,
+                    folderPath: nil,
+                    folderIDPath: parentPageID.map { "/\($0)" }
                 ))
                 if lastEdited > newest { newest = lastEdited }
             }

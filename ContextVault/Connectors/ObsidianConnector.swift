@@ -60,11 +60,15 @@ struct ObsidianConnector: Connector {
             guard let content = try? String(contentsOf: fileURL, encoding: .utf8) else { continue }
 
             let relativePath = fileURL.path.replacingOccurrences(of: folderURL.path, with: "")
+            let directory = (relativePath as NSString).deletingLastPathComponent
+            let folderPath = directory.isEmpty || directory == "/" ? nil : directory
             items.append(SourceItem(
                 sourceRef: "obsidian:\(account.id.uuidString):\(relativePath)",
                 filename: fileURL.lastPathComponent,
                 rawContent: content,
-                modifiedAt: modified
+                modifiedAt: modified,
+                folderPath: folderPath,
+                folderIDPath: folderPath // paths ARE the IDs for file-based sources
             ))
             newest = max(newest, modified)
         }

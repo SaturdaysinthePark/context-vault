@@ -54,6 +54,15 @@ final class VaultStore {
         return try context.fetch(descriptor)
     }
 
+    /// All memories belonging to one source account (sourceRef prefix scan) —
+    /// used by the Drive path-refresh pass and retroactive rule application.
+    func memories(sourceRefPrefix prefix: String) throws -> [Memory] {
+        let descriptor = FetchDescriptor<Memory>(
+            predicate: #Predicate { $0.sourceRef?.starts(with: prefix) == true }
+        )
+        return try context.fetch(descriptor)
+    }
+
     /// Find a memory by its source reference (used by connectors for upsert).
     func memory(sourceRef: String) throws -> Memory? {
         var descriptor = FetchDescriptor<Memory>(

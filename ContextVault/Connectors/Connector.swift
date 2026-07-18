@@ -6,12 +6,27 @@ struct SourceItem: Sendable {
     var filename: String
     var rawContent: String
     var modifiedAt: Date
+    /// Human-readable folder path within the source (nil = root/unknown).
+    var folderPath: String? = nil
+    /// Machine ancestor chain (see Memory.sourceFolderPath).
+    var folderIDPath: String? = nil
+}
+
+/// Resolved folder location, keyed by folder ID in `SyncResult.folderPaths`.
+struct FolderPaths: Sendable {
+    var path: String
+    var idPath: String
 }
 
 /// The result of one incremental sync pass.
 struct SyncResult: Sendable {
     var items: [SourceItem]
     var newCursor: String?
+    /// Fresh folder map (immediate-parent folder ID → resolved paths) for
+    /// sources with server-side folder structure (Drive). Ingest uses it to
+    /// refresh paths on ALL of the account's memories so renames/moves stay
+    /// current without extra API calls.
+    var folderPaths: [String: FolderPaths]? = nil
 }
 
 /// A connector pulls content from one external source into the vault.
