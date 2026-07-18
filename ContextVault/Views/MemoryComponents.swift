@@ -1,64 +1,9 @@
 import SwiftUI
 import SwiftData
 
-/// All memories, newest first, with quick capture.
-struct VaultView: View {
-    @Environment(\.modelContext) private var context
-    @Query(sort: \Memory.modifiedAt, order: .reverse) private var memories: [Memory]
-    @State private var showingCapture = false
-    @State private var searchText = ""
-
-    private var filtered: [Memory] {
-        guard !searchText.isEmpty else { return memories }
-        return memories.filter {
-            $0.title.localizedCaseInsensitiveContains(searchText) ||
-            $0.body.localizedCaseInsensitiveContains(searchText)
-        }
-    }
-
-    var body: some View {
-        NavigationStack {
-            Group {
-                if memories.isEmpty {
-                    ContentUnavailableView(
-                        "Your vault is empty",
-                        systemImage: "archivebox",
-                        description: Text("Connect a source or capture your first memory.")
-                    )
-                } else {
-                    List {
-                        AboutMeCardSection()
-                        Section("Memories") {
-                            ForEach(filtered) { memory in
-                                NavigationLink(value: memory.id) {
-                                    MemoryRow(memory: memory)
-                                }
-                            }
-                        }
-                    }
-                    .searchable(text: $searchText, prompt: "Search memories")
-                }
-            }
-            .navigationTitle("Vault")
-            .navigationDestination(for: UUID.self) { id in
-                if let memory = memories.first(where: { $0.id == id }) {
-                    MemoryDetailView(memory: memory)
-                }
-            }
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button("Capture", systemImage: "plus") { showingCapture = true }
-                }
-            }
-            .sheet(isPresented: $showingCapture) {
-                CaptureSheet()
-            }
-            .refreshable {
-                await SyncManager.shared.syncAll()
-            }
-        }
-    }
-}
+// Shared memory components (MemoryRow, MemoryDetailView, CaptureSheet).
+// The old Vault stream tab was absorbed into HomeView (dashboard + global
+// search) and SourceDetailView (per-source browsing).
 
 struct MemoryRow: View {
     let memory: Memory

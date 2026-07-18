@@ -6,8 +6,8 @@ struct RootView: View {
 
     var body: some View {
         TabView {
-            Tab("Vault", systemImage: "archivebox") {
-                VaultView()
+            Tab("Home", systemImage: "house") {
+                HomeView()
             }
             Tab("Collections", systemImage: "square.stack.3d.up") {
                 CollectionsView()
