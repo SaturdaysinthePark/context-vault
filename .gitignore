@@ -13,3 +13,6 @@ DerivedData/
 
 # Local build output
 build/
+
+# Personal session memories (local only)
+memories/
