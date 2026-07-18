@@ -18,13 +18,16 @@ struct FileEnricherTests {
         #expect(FileEnricher.strategy(for: "application/pdf", inEnrichmentScope: false) == .pdf)
     }
 
-    @Test func documentTypesAlwaysGetAtLeastMetadata() {
-        for mime in [
-            "application/epub+zip",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            "application/rtf",
-            "application/vnd.ms-excel",
-        ] {
+    @Test func zipBasedDocumentsGetRealExtraction() {
+        #expect(FileEnricher.strategy(for: "application/epub+zip", inEnrichmentScope: false) == .zipDocument)
+        #expect(FileEnricher.strategy(
+            for: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            inEnrichmentScope: false
+        ) == .zipDocument)
+    }
+
+    @Test func otherDocumentTypesAlwaysGetAtLeastMetadata() {
+        for mime in ["application/rtf", "application/vnd.ms-excel"] {
             #expect(FileEnricher.strategy(for: mime, inEnrichmentScope: false) == .metadataOnly)
         }
     }
