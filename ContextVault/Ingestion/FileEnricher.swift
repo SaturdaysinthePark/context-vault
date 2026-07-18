@@ -50,7 +50,7 @@ enum FileEnricher {
         case "application/zip", "application/x-zip-compressed":
             return inEnrichmentScope ? .zipDocument : .skip
         case let mime where mime.hasPrefix("image/"):
-            return inEnrichmentScope ? .metadataOnly : .skip // → .image in phase 4
+            return inEnrichmentScope ? .image : .skip
         case let mime where mime.hasPrefix("audio/") || mime.hasPrefix("video/"):
             return inEnrichmentScope ? .metadataOnly : .skip
         case "application/vnd.google-apps.folder",

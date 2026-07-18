@@ -15,6 +15,10 @@ struct GoogleDriveConfig: Codable {
 struct GoogleDriveConnector: Connector {
     let sourceType: SourceType = .googleDrive
 
+    /// OCR/classification budget per sync pass; overflow images get stubs
+    /// this pass and enrich on a later one.
+    static let imagesPerPassCap = 50
+
     func sync(account: SourceAccountSnapshot) async throws -> SyncResult {
         guard let configData = account.configData,
               let config = try? JSONDecoder().decode(GoogleDriveConfig.self, from: configData),
@@ -51,6 +55,7 @@ struct GoogleDriveConnector: Connector {
         var items: [SourceItem] = []
         var newest = cursor
         var pageToken: String?
+        var enrichedImageCount = 0
 
         repeat {
             let page = try await listFiles(
@@ -99,8 +104,18 @@ struct GoogleDriveConnector: Connector {
                         content = FileEnricher.stubBody(name: file.name, kind: kind, folderPath: paths?.path, modified: modified)
                         fidelity = .metadataOnly
                     }
-                case .metadataOnly, .image:
-                    // Images get OCR/caption in a later phase.
+                case .image:
+                    if enrichedImageCount < Self.imagesPerPassCap,
+                       let data = (try? await fetchData(of: file, tokens: &tokens, config: config, account: account)) ?? nil,
+                       let enriched = ImageEnricher.enrich(data: data, filename: file.name) {
+                        enrichedImageCount += 1
+                        content = enriched.text
+                        fidelity = enriched.fidelity
+                    } else {
+                        content = FileEnricher.stubBody(name: file.name, kind: kind, folderPath: paths?.path, modified: modified)
+                        fidelity = .metadataOnly
+                    }
+                case .metadataOnly:
                     content = FileEnricher.stubBody(name: file.name, kind: kind, folderPath: paths?.path, modified: modified)
                     fidelity = .metadataOnly
                 case .skip:

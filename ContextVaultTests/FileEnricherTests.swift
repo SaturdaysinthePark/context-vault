@@ -34,9 +34,13 @@ struct FileEnricherTests {
 
     @Test func mediaOnlyCountsInsideEnrichmentScope() {
         #expect(FileEnricher.strategy(for: "image/png", inEnrichmentScope: false) == .skip)
-        #expect(FileEnricher.strategy(for: "image/png", inEnrichmentScope: true) == .metadataOnly)
+        #expect(FileEnricher.strategy(for: "image/png", inEnrichmentScope: true) == .image)
         #expect(FileEnricher.strategy(for: "video/mp4", inEnrichmentScope: false) == .skip)
         #expect(FileEnricher.strategy(for: "audio/mpeg", inEnrichmentScope: true) == .metadataOnly)
+    }
+
+    @Test func imageEnricherRejectsGarbage() {
+        #expect(ImageEnricher.enrich(data: Data("not an image".utf8), filename: "x.png") == nil)
     }
 
     @Test func systemTypesAreSkipped() {
