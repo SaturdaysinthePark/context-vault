@@ -1,8 +1,8 @@
 import SwiftUI
 import SwiftData
 
-/// Collections with aspects, live rules, and the per-collection Siri
-/// visibility toggle.
+/// Collections with aspects, synced folders/sources, and the per-collection
+/// Siri visibility toggle.
 struct CollectionsView: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \MemoryCollection.name) private var collections: [MemoryCollection]
@@ -15,7 +15,7 @@ struct CollectionsView: View {
                     ContentUnavailableView(
                         "No collections yet",
                         systemImage: "square.stack.3d.up",
-                        description: Text("Collections group memories — by hand or by subscribing to sources and folders — and control what Siri can see.")
+                        description: Text("Collections group memories — subscribe whole folders and sources, or hand-pick — and control what Siri can see.")
                     )
                 } else {
                     List {
@@ -30,7 +30,7 @@ struct CollectionsView: View {
                                         if !collection.rules.isEmpty {
                                             Image(systemName: "arrow.triangle.2.circlepath.circle")
                                                 .foregroundStyle(.secondary)
-                                                .accessibilityLabel("Has live rules")
+                                                .accessibilityLabel("Has synced folders or sources")
                                         }
                                         if !collection.siriVisible {
                                             Image(systemName: "eye.slash")
@@ -69,11 +69,25 @@ struct CollectionsView: View {
 struct CollectionDetailView: View {
     @Bindable var collection: MemoryCollection
     @Environment(\.modelContext) private var context
-    @State private var showingAddMemories = false
+    @State private var showingAdd = false
     @State private var showingEdit = false
-    @State private var showingEntireSourcePicker = false
-    @State private var showingDriveFolderFlow = false
-    @State private var showingObsidianFolderPicker = false
+    @State private var unsubscribeTarget: CollectionRule?
+
+    /// Memories grouped by the first synced folder/source they match, plus
+    /// the hand-picked remainder. Order: rules in creation order, then
+    /// hand-picked.
+    private var groups: [(rule: CollectionRule?, memories: [Memory])] {
+        var remaining = collection.memories.sorted { $0.modifiedAt > $1.modifiedAt }
+        var result: [(CollectionRule?, [Memory])] = []
+
+        for rule in collection.rules {
+            let matched = remaining.filter { CollectionRuleEngine.matches(rule, $0) }
+            remaining.removeAll { memory in matched.contains { $0.id == memory.id } }
+            result.append((rule, matched))
+        }
+        result.append((nil, remaining))
+        return result
+    }
 
     var body: some View {
         List {
@@ -105,71 +119,20 @@ struct CollectionDetailView: View {
             }
 
             Section {
-                if collection.rules.isEmpty {
-                    Text("No rules — this collection only contains hand-picked memories.")
-                        .foregroundStyle(.secondary)
-                        .font(.callout)
-                } else {
-                    ForEach(collection.rules) { rule in
-                        Label(rule.displayName,
-                              systemImage: rule.kind == .entireSource ? "externaldrive.connected.to.line.below" : "folder.badge.gearshape")
-                    }
-                    .onDelete { offsets in
-                        var rules = collection.rules
-                        rules.remove(atOffsets: offsets)
-                        collection.rules = rules
-                        try? context.save()
-                    }
-                }
-            } header: {
-                Text("Rules")
-            } footer: {
-                Text("Rules keep this collection live: new memories from a subscribed source or folder join automatically on every sync. Removing a rule keeps memories already added.")
-            }
-
-            Section {
-                Menu {
-                    Button {
-                        showingDriveFolderFlow = true
-                    } label: {
-                        Label("Add Google Drive folder…", systemImage: "externaldrive")
-                    }
-                    Button {
-                        showingObsidianFolderPicker = true
-                    } label: {
-                        Label("Add notes folder…", systemImage: "folder")
-                    }
-                    Button {
-                        showingEntireSourcePicker = true
-                    } label: {
-                        Label("Add entire source…", systemImage: "externaldrive.connected.to.line.below")
-                    }
-                    Divider()
-                    Button {
-                        showingAddMemories = true
-                    } label: {
-                        Label("Pick individual memories…", systemImage: "checklist")
-                    }
+                Button {
+                    showingAdd = true
                 } label: {
                     Label("Add to collection", systemImage: "plus.circle")
                 }
+            }
 
-                if collection.memories.isEmpty {
-                    Text("No memories yet.").foregroundStyle(.secondary)
-                } else {
-                    ForEach(collection.memories) { memory in
-                        NavigationLink {
-                            MemoryDetailView(memory: memory)
-                        } label: {
-                            MemoryRow(memory: memory)
-                        }
-                    }
-                    .onDelete { offsets in
-                        removeMemories(at: offsets)
-                    }
+            if collection.memories.isEmpty && collection.rules.isEmpty {
+                Section {
+                    Text("Nothing here yet — add folders, sources, or individual memories.")
+                        .foregroundStyle(.secondary)
                 }
-            } header: {
-                Text("Memories")
+            } else {
+                memoryGroups
             }
         }
         .navigationTitle(collection.name)
@@ -190,27 +153,98 @@ struct CollectionDetailView: View {
                 }
             }
         }
-        .sheet(isPresented: $showingAddMemories) {
-            AddMemoriesSheet(collection: collection)
+        .sheet(isPresented: $showingAdd) {
+            AddToCollectionSheet(collection: collection)
         }
         .sheet(isPresented: $showingEdit) {
             CollectionFormSheet(collection: collection)
         }
-        .sheet(isPresented: $showingEntireSourcePicker) {
-            EntireSourceRuleSheet(collection: collection)
-        }
-        .sheet(isPresented: $showingDriveFolderFlow) {
-            DriveFolderRuleSheet(collection: collection)
-        }
-        .sheet(isPresented: $showingObsidianFolderPicker) {
-            NotesFolderRuleSheet(collection: collection)
+        .confirmationDialog(
+            "Unsubscribe from \(unsubscribeTarget?.displayName ?? "")?",
+            isPresented: Binding(
+                get: { unsubscribeTarget != nil },
+                set: { if !$0 { unsubscribeTarget = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Unsubscribe, keep memories") {
+                if let rule = unsubscribeTarget { unsubscribe(rule, removeMemories: false) }
+            }
+            Button("Unsubscribe and remove its memories", role: .destructive) {
+                if let rule = unsubscribeTarget { unsubscribe(rule, removeMemories: true) }
+            }
+            Button("Cancel", role: .cancel) {}
         }
     }
 
-    private func removeMemories(at offsets: IndexSet) {
+    @ViewBuilder
+    private var memoryGroups: some View {
+        let grouped = groups
+        ForEach(Array(grouped.enumerated()), id: \.offset) { index, group in
+            let isLastSyncedGroup = group.rule != nil
+                && (index + 1 >= grouped.count || grouped[index + 1].rule == nil)
+            Section {
+                if group.memories.isEmpty {
+                    Text(group.rule == nil ? "No hand-picked memories." : "Nothing synced from here yet.")
+                        .foregroundStyle(.secondary)
+                        .font(.callout)
+                } else {
+                    ForEach(group.memories) { memory in
+                        NavigationLink {
+                            MemoryDetailView(memory: memory)
+                        } label: {
+                            MemoryRow(memory: memory)
+                        }
+                    }
+                    .onDelete { offsets in
+                        removeMemories(group.memories, at: offsets)
+                    }
+                }
+            } header: {
+                if let rule = group.rule {
+                    HStack {
+                        Label("\(rule.displayName) (\(group.memories.count))",
+                              systemImage: rule.kind == .folder ? "folder.badge.gearshape" : "externaldrive.connected.to.line.below")
+                        Spacer()
+                        Menu {
+                            Button("Unsubscribe…", role: .destructive) {
+                                unsubscribeTarget = rule
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis.circle")
+                        }
+                    }
+                } else {
+                    Text("Hand-picked (\(group.memories.count))")
+                }
+            } footer: {
+                if isLastSyncedGroup {
+                    Text("Synced folders stay live — new files in them join this collection on every sync.")
+                }
+            }
+        }
+    }
+
+    private func unsubscribe(_ rule: CollectionRule, removeMemories: Bool) {
+        if removeMemories {
+            // Detach this group's current members. No exclusions recorded —
+            // the rule is gone, so nothing would re-add them.
+            let members = collection.memories.filter { CollectionRuleEngine.matches(rule, $0) }
+            for memory in members {
+                memory.collections.removeAll { $0.id == collection.id }
+            }
+        }
+        collection.rules.removeAll { $0.id == rule.id }
+        try? context.save()
+        Task { @MainActor in
+            try? await VaultStore.shared.reindexCollection(collection)
+        }
+    }
+
+    private func removeMemories(_ memories: [Memory], at offsets: IndexSet) {
         var exclusions = collection.excludedMemoryIDs
         for offset in offsets {
-            let memory = collection.memories[offset]
+            let memory = memories[offset]
             exclusions.insert(memory.id)
             memory.collections.removeAll { $0.id == collection.id }
         }
@@ -222,222 +256,28 @@ struct CollectionDetailView: View {
     }
 }
 
-// MARK: - Rule creation sheets
-
-/// Subscribe a collection to everything from one source.
-struct EntireSourceRuleSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var context
-    @Bindable var collection: MemoryCollection
-    @Query(sort: \SourceAccount.createdAt) private var accounts: [SourceAccount]
-
-    var body: some View {
-        NavigationStack {
-            List {
-                if accounts.isEmpty {
-                    Text("No sources connected yet.").foregroundStyle(.secondary)
-                }
-                ForEach(accounts) { account in
-                    Button {
-                        addRule(for: account)
-                    } label: {
-                        Label(account.displayName, systemImage: "externaldrive.connected.to.line.below")
-                    }
-                }
-            }
-            .navigationTitle("Add entire source")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-            }
-        }
-    }
-
-    private func addRule(for account: SourceAccount) {
-        let rule = CollectionRule(
-            sourceAccountID: account.id,
-            sourceTypeRaw: account.sourceTypeRaw,
-            kind: .entireSource,
-            displayName: "Entire source: \(account.displayName)"
-        )
-        collection.rules.append(rule)
-        applyNewRule(rule, to: collection, context: context)
-        dismiss()
-    }
-}
-
-/// Subscribe a collection to Google Drive folders (subtrees included).
-struct DriveFolderRuleSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var context
-    @Bindable var collection: MemoryCollection
-    @Query(sort: \SourceAccount.createdAt) private var accounts: [SourceAccount]
-
-    @State private var pickerAccount: SourceAccount?
-
-    private var driveAccounts: [SourceAccount] {
-        accounts.filter { $0.sourceType == .googleDrive }
-    }
-
-    var body: some View {
-        NavigationStack {
-            List {
-                if driveAccounts.isEmpty {
-                    Text("Connect Google Drive in Sources first.").foregroundStyle(.secondary)
-                }
-                ForEach(driveAccounts) { account in
-                    Button {
-                        pickerAccount = account
-                    } label: {
-                        Label(account.displayName, systemImage: "externaldrive")
-                    }
-                }
-            }
-            .navigationTitle("Add Drive folder")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-            }
-            .sheet(item: $pickerAccount) { account in
-                if let config = account.configData.flatMap({ try? JSONDecoder().decode(GoogleDriveConfig.self, from: $0) }),
-                   let tokens = KeychainStore.load(GoogleTokens.self, for: account.keychainKey) {
-                    DriveFolderPickerView(
-                        title: "Choose folders",
-                        loader: {
-                            try await DriveFolderService.fetch(
-                                tokens: tokens,
-                                clientID: config.clientID,
-                                keychainKey: account.keychainKey
-                            )
-                        },
-                        onConfirm: { folders in
-                            addRules(folders: folders, account: account)
-                        }
-                    )
-                }
-            }
-        }
-    }
-
-    private func addRules(folders: [(id: String, path: String)], account: SourceAccount) {
-        for folder in folders {
-            let rule = CollectionRule(
-                sourceAccountID: account.id,
-                sourceTypeRaw: account.sourceTypeRaw,
-                kind: .folder,
-                folderID: folder.id,
-                folderPath: folder.path,
-                displayName: "\(account.displayName) · \(folder.path)"
-            )
-            collection.rules.append(rule)
-            applyNewRule(rule, to: collection, context: context)
-        }
-        dismiss()
-    }
-}
-
-/// Subscribe a collection to known folders of file-based sources (Obsidian /
-/// Markdown). Folders are derived from already-synced memories — no
-/// filesystem browsing needed.
-struct NotesFolderRuleSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var context
-    @Bindable var collection: MemoryCollection
-    @Query(sort: \SourceAccount.createdAt) private var accounts: [SourceAccount]
-    @Query private var memories: [Memory]
-
-    private var folderOptions: [(account: SourceAccount, path: String)] {
-        let fileAccounts = accounts.filter { $0.sourceType == .obsidian || $0.sourceType == .files }
-        var result: [(SourceAccount, String)] = []
-        for account in fileAccounts {
-            let prefix = "obsidian:\(account.id.uuidString):"
-            let paths = Set(
-                memories
-                    .filter { $0.sourceRef?.hasPrefix(prefix) == true }
-                    .compactMap(\.sourcePath)
-            )
-            for path in paths.sorted() {
-                result.append((account, path))
-            }
-        }
-        return result
-    }
-
-    var body: some View {
-        NavigationStack {
-            List {
-                if folderOptions.isEmpty {
-                    Text("No subfolders found in your synced notes yet.")
-                        .foregroundStyle(.secondary)
-                }
-                ForEach(Array(folderOptions.enumerated()), id: \.offset) { _, option in
-                    Button {
-                        addRule(account: option.account, path: option.path)
-                    } label: {
-                        VStack(alignment: .leading) {
-                            Label(option.path, systemImage: "folder")
-                            Text(option.account.displayName)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-            }
-            .navigationTitle("Add notes folder")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-            }
-        }
-    }
-
-    private func addRule(account: SourceAccount, path: String) {
-        let rule = CollectionRule(
-            sourceAccountID: account.id,
-            sourceTypeRaw: account.sourceTypeRaw,
-            kind: .folder,
-            folderPath: path,
-            displayName: "\(account.displayName) · \(path)"
-        )
-        collection.rules.append(rule)
-        applyNewRule(rule, to: collection, context: context)
-        dismiss()
-    }
-}
-
-/// Shared post-rule-creation work: retroactive apply + reindex.
-@MainActor
-private func applyNewRule(_ rule: CollectionRule, to collection: MemoryCollection, context: ModelContext) {
-    try? context.save()
-    let changed = (try? CollectionRuleEngine.applyRetroactively(rule, to: collection)) ?? []
-    let snapshots = changed.map(MemorySnapshot.init)
-    Task {
-        try? await SpotlightIndexer.shared.reindex(memories: snapshots)
-    }
-}
-
 // MARK: - Membership picker
 
-/// Multi-select picker for adding/removing vault memories in a collection,
-/// with a source filter.
+/// Multi-select picker for adding/removing vault memories in a collection.
+/// With `fixedAccountID`, filters to one source and hides the source picker.
+/// With `embedded`, renders for use inside an existing NavigationStack.
 struct AddMemoriesSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Bindable var collection: MemoryCollection
+    var fixedAccountID: UUID? = nil
+    var embedded: Bool = false
+
     @Query(sort: \Memory.modifiedAt, order: .reverse) private var memories: [Memory]
     @Query(sort: \SourceAccount.createdAt) private var accounts: [SourceAccount]
     @State private var searchText = ""
-    @State private var sourceFilter: UUID? // SourceAccount.id
+    @State private var sourceFilter: UUID?
+
+    private var activeFilter: UUID? { fixedAccountID ?? sourceFilter }
 
     private var filtered: [Memory] {
         var result = memories
-        if let sourceFilter, let account = accounts.first(where: { $0.id == sourceFilter }) {
-            let prefixes = ["gdrive:", "notion:", "obsidian:"].map { "\($0)\(account.id.uuidString):" }
+        if let activeFilter, let account = accounts.first(where: { $0.id == activeFilter }) {
+            let prefixes = sourceRefPrefixes(for: account)
             result = result.filter { memory in
                 guard let ref = memory.sourceRef else { return false }
                 return prefixes.contains { ref.hasPrefix($0) }
@@ -451,8 +291,28 @@ struct AddMemoriesSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
+        if embedded {
+            content
+        } else {
+            NavigationStack {
+                content
+                    .navigationTitle("Add to \(collection.name)")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") {
+                                dismiss()
+                                finishReindex()
+                            }
+                        }
+                    }
+            }
+        }
+    }
+
+    private var content: some View {
+        VStack(spacing: 0) {
+            if fixedAccountID == nil && accounts.count > 1 {
                 Picker("Source", selection: $sourceFilter) {
                     Text("All sources").tag(UUID?.none)
                     ForEach(accounts) { account in
@@ -462,53 +322,51 @@ struct AddMemoriesSheet: View {
                 .pickerStyle(.segmented)
                 .padding(.horizontal)
                 .padding(.top, 8)
+            }
 
-                List(filtered) { memory in
-                    let isMember = memory.collections.contains { $0.id == collection.id }
-                    Button {
-                        toggle(memory)
-                    } label: {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(memory.title).lineLimit(1).foregroundStyle(.primary)
-                                Text(memory.sourcePath ?? memory.body)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(1)
-                            }
-                            Spacer()
-                            Image(systemName: isMember ? "checkmark.circle.fill" : "circle")
-                                .foregroundStyle(isMember ? AnyShapeStyle(.tint) : AnyShapeStyle(.tertiary))
+            List(filtered) { memory in
+                let isMember = memory.collections.contains { $0.id == collection.id }
+                Button {
+                    toggle(memory)
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(memory.title).lineLimit(1).foregroundStyle(.primary)
+                            Text(memory.sourcePath ?? memory.body)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
                         }
-                    }
-                }
-                .searchable(text: $searchText, prompt: "Search your vault")
-            }
-            .navigationTitle("Add to \(collection.name)")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
-                        dismiss()
-                        Task { @MainActor in
-                            try? await VaultStore.shared.reindexCollection(collection)
-                        }
+                        Spacer()
+                        Image(systemName: isMember ? "checkmark.circle.fill" : "circle")
+                            .foregroundStyle(isMember ? AnyShapeStyle(.tint) : AnyShapeStyle(.tertiary))
                     }
                 }
             }
+            .searchable(text: $searchText, prompt: "Search")
+        }
+        .onDisappear {
+            if embedded { finishReindex() }
         }
     }
 
     private func toggle(_ memory: Memory) {
         if let index = memory.collections.firstIndex(where: { $0.id == collection.id }) {
             memory.collections.remove(at: index)
-            // User removal: rules must never re-add this memory.
+            // User removal: synced folders/sources must never re-add it.
             collection.excludedMemoryIDs.insert(memory.id)
         } else {
             memory.collections.append(collection)
             collection.excludedMemoryIDs.remove(memory.id)
         }
         try? memory.modelContext?.save()
+    }
+
+    private func finishReindex() {
+        let target = collection
+        Task { @MainActor in
+            try? await VaultStore.shared.reindexCollection(target)
+        }
     }
 }
 
