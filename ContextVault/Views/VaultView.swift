@@ -169,8 +169,11 @@ struct MemoryDetailView: View {
     private func toggleMembership(_ collection: MemoryCollection) {
         if let index = memory.collections.firstIndex(where: { $0.id == collection.id }) {
             memory.collections.remove(at: index)
+            // User removal: live rules must never re-add this memory.
+            collection.excludedMemoryIDs.insert(memory.id)
         } else {
             memory.collections.append(collection)
+            collection.excludedMemoryIDs.remove(memory.id)
         }
         try? memory.modelContext?.save()
         let snapshot = MemorySnapshot(memory)

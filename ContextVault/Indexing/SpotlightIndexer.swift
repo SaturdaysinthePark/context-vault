@@ -135,7 +135,11 @@ struct MemorySnapshot: Sendable {
         self.body = memory.body
         self.summary = memory.summary
         self.isSiriVisible = memory.isSiriVisible
-        self.aspectValues = memory.collections.flatMap { $0.aspects.map(\.value) }
+        // Collection names, aspects, and descriptions all sharpen semantic
+        // matching for this memory in the system index.
+        self.aspectValues = memory.collections.flatMap { collection in
+            [collection.name] + collection.aspects.map(\.value) + (collection.details.isEmpty ? [] : [collection.details])
+        }
         self.createdAt = memory.createdAt
         self.modifiedAt = memory.modifiedAt
     }

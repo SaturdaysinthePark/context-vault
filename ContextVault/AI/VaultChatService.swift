@@ -118,10 +118,15 @@ final class VaultChatService {
             )
         }
 
-        // 3. Ask the on-device model.
+        // 3. Ask the on-device model. A scoped collection's description is
+        //    user-authored context about what the collection covers.
         let session = LanguageModelSession(instructions: instructions)
+        let scopeNote = collection.flatMap { scoped -> String? in
+            guard !scoped.details.isEmpty else { return nil }
+            return "The user scoped this question to their \"\(scoped.name)\" collection: \(scoped.details)\n\n"
+        } ?? ""
         let prompt = """
-            Context from the user's vault:
+            \(scopeNote)Context from the user's vault:
 
             \(contextParts.joined(separator: "\n\n"))
 

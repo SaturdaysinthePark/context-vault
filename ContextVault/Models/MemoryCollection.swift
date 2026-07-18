@@ -28,11 +28,26 @@ final class MemoryCollection {
     /// differentiator: index entries are added/removed when this flips.
     var siriVisible: Bool
     var createdAt: Date
+    /// Live membership rules (JSON [CollectionRule]); see CollectionRule.
+    var rulesData: Data?
+    /// Memory IDs the user manually removed (JSON [UUID]) — rules never
+    /// re-add these.
+    var exclusionsData: Data?
     @Relationship(inverse: \Memory.collections) var memories: [Memory]
 
     var aspects: [Aspect] {
         get { (try? JSONDecoder().decode([Aspect].self, from: aspectsData)) ?? [] }
         set { aspectsData = (try? JSONEncoder().encode(newValue)) ?? Data() }
+    }
+
+    var rules: [CollectionRule] {
+        get { rulesData.flatMap { try? JSONDecoder().decode([CollectionRule].self, from: $0) } ?? [] }
+        set { rulesData = try? JSONEncoder().encode(newValue) }
+    }
+
+    var excludedMemoryIDs: Set<UUID> {
+        get { exclusionsData.flatMap { try? JSONDecoder().decode(Set<UUID>.self, from: $0) } ?? [] }
+        set { exclusionsData = try? JSONEncoder().encode(newValue) }
     }
 
     init(

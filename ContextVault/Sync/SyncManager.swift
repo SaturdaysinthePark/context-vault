@@ -130,10 +130,17 @@ final class SyncManager: @unchecked Sendable {
             }
         }
 
-        // Reindex everything touched this pass, then persist the cursor.
+        // Apply live collection rules to touched memories, reindex everything
+        // touched this pass (rule membership affects Siri visibility), then
+        // persist the cursor.
         try await MainActor.run {
             let refs = result.items.map(\.sourceRef)
             let touched = try refs.compactMap { try VaultStore.shared.memory(sourceRef: $0) }
+
+            let collections = try VaultStore.shared.allCollections()
+            CollectionRuleEngine.apply(to: touched, collections: collections)
+            try VaultStore.shared.context.save()
+
             Task {
                 try? await SpotlightIndexer.shared.reindex(memories: touched.map(MemorySnapshot.init))
             }
