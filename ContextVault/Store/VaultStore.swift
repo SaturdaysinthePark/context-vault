@@ -134,6 +134,30 @@ final class VaultStore {
         try await reindex(cards: affected)
     }
 
+    // MARK: Connected sources
+
+    /// Sendable copies of the connected accounts, for indexing. A source is
+    /// visible to Siri unless sharing is off or the source is hidden.
+    func sourceSnapshots() throws -> [SourceSnapshot] {
+        let accounts = try context.fetch(FetchDescriptor<SourceAccount>())
+        let allCards = try cards(includeArchived: false)
+        let hidden = SiriExposure.hiddenSources
+        return accounts.map { account in
+            SourceSnapshot(
+                id: account.id,
+                sourceType: account.sourceType,
+                lastSyncedAt: account.lastSyncedAt,
+                cardCount: allCards.filter { $0.sourceAccountID == account.id }.count,
+                isSiriVisible: SiriExposure.isEnabled && !hidden.contains(account.sourceType)
+            )
+        }
+    }
+
+    /// Push the connected sources into (or remove them from) the index.
+    func reindexSources() async throws {
+        try await SpotlightIndexer.shared.reindex(sources: sourceSnapshots())
+    }
+
     // MARK: Context cards
 
     func cards(ids: [UUID]) throws -> [ContextCard] {

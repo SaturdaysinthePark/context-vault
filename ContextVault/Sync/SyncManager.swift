@@ -107,6 +107,8 @@ final class SyncManager: @unchecked Sendable {
         await gate.wait()
         await runSync(types: nil, quickLimit: nil)
         await runIntelligence(cardLimit: 40, sources: nil)
+        // Keep the indexed source entities (name, counts, last sync) current.
+        try? await VaultStore.shared.reindexSources()
         await gate.end()
     }
 

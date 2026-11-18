@@ -47,6 +47,8 @@ enum CardIndexingPath: String, CaseIterable, Sendable {
 /// - **Context cards**, as app entities (`ContextCardEntity`).
 /// - **Memories from document sources** (Drive, Notion, Obsidian, notes),
 ///   as searchable items linked to `MemoryEntity`.
+/// - **Connected sources**, one entity each (`SourceEntity`), so a source
+///   can be named in a request.
 /// - **Never raw email.** Mail evidence stays in the app; only the cards
 ///   distilled from it are indexed.
 ///
@@ -56,6 +58,7 @@ actor SpotlightIndexer {
     static let shared = SpotlightIndexer()
     static let domainIdentifier = "com.saturdaysinthepark.contextvault.memories"
     static let cardDomainIdentifier = "com.saturdaysinthepark.contextvault.cards"
+    static let sourceDomainIdentifier = "com.saturdaysinthepark.contextvault.sources"
     static let indexName = "context-vault-memories"
 
     private var index: CSSearchableIndex {
@@ -121,6 +124,24 @@ actor SpotlightIndexer {
         try? await index.deleteSearchableItems(withDomainIdentifiers: [Self.cardDomainIdentifier])
     }
 
+    // MARK: Connected sources
+
+    /// Index one entity per connected source, so naming a source in a
+    /// request ("in my Gmail") matches something of ours. Hidden sources
+    /// are removed.
+    func reindex(sources: [SourceSnapshot]) async throws {
+        guard exposureEnabled else { return }
+        let (visible, hidden) = sources.partitioned { $0.isSiriVisible }
+        await removeSources(ids: hidden.map(\.id))
+        guard !visible.isEmpty else { return }
+        try await index.indexAppEntities(visible.map(SourceEntity.init))
+    }
+
+    func removeSources(ids: [UUID]) async {
+        guard !ids.isEmpty else { return }
+        try? await index.deleteAppEntities(identifiedBy: ids, ofType: SourceEntity.self)
+    }
+
     // MARK: Memories (document evidence)
 
     /// Index (or reindex) a batch of memories, honoring Siri visibility.
@@ -161,6 +182,7 @@ actor SpotlightIndexer {
     /// Empty the index completely: memories, cards and the About Me card.
     func deleteAll() async throws {
         await removeAllCards()
+        try? await index.deleteAppEntities(ofType: SourceEntity.self)
         try await index.deleteSearchableItems(withDomainIdentifiers: [Self.domainIdentifier])
     }
 

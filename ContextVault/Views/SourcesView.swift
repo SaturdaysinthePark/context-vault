@@ -39,6 +39,8 @@ struct SourcesView: View {
                     .onDelete { offsets in
                         for offset in offsets {
                             KeychainStore.delete(for: accounts[offset].keychainKey)
+                            let accountID = accounts[offset].id
+                            Task { await SpotlightIndexer.shared.removeSources(ids: [accountID]) }
                             context.delete(accounts[offset])
                         }
                         try? context.save()

@@ -24,6 +24,19 @@ enum SourceType: String, Codable, CaseIterable, Sendable {
         }
     }
 
+    /// The words people use for this source when they speak. Indexed as
+    /// keywords so "my email" or "my Drive" finds the source.
+    var spokenNames: [String] {
+        switch self {
+        case .gmail: ["Gmail", "email", "mail", "inbox", "Google Mail"]
+        case .googleDrive: ["Google Drive", "Drive", "Google Docs"]
+        case .notion: ["Notion"]
+        case .obsidian: ["Obsidian", "Obsidian vault"]
+        case .files: ["Files", "folder"]
+        case .manual, .shareExtension: ["Notes", "saved notes"]
+        }
+    }
+
     /// Whether raw evidence from this source may enter the system index.
     /// Documents and notes may; email never does — only the context cards
     /// distilled from it are indexed.

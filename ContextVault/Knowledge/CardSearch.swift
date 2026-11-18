@@ -81,18 +81,29 @@ enum CardSearch {
         now: Date = .now
     ) -> [CardSnapshot] {
         let candidates = cards.filter { card in
-            (kind == nil || card.kind == kind) && (sources == nil || sources!.contains(card.sourceType))
+            if let kind, card.kind != kind { return false }
+            if let sources, !sources.contains(card.sourceType) { return false }
+            return true
         }
         let queryTokens = tokens(query)
         guard !queryTokens.isEmpty else {
             return Array(candidates.sorted { relevanceDate($0, now) < relevanceDate($1, now) }.prefix(limit))
         }
-        return candidates
-            .map { ($0, score($0, queryTokens: queryTokens, now: now)) }
-            .filter { $0.1 > 0 }
-            .sorted { $0.1 != $1.1 ? $0.1 > $1.1 : $0.0.asOf > $1.0.asOf }
-            .prefix(limit)
-            .map(\.0)
+        var scored: [(card: CardSnapshot, score: Double)] = []
+        for card in candidates {
+            let value = score(card, queryTokens: queryTokens, now: now)
+            if value > 0 {
+                scored.append((card, value))
+            }
+        }
+        // Best score first; between equal scores, the fresher card.
+        scored.sort { first, second in
+            if first.score != second.score {
+                return first.score > second.score
+            }
+            return first.card.asOf > second.card.asOf
+        }
+        return scored.prefix(limit).map { $0.card }
     }
 
     /// Distance from now to the card's date; undated cards sort last,

@@ -199,6 +199,7 @@ struct PrivacyView: View {
         Task { @MainActor in
             try? await SpotlightIndexer.shared.reindex(memories: snapshots)
             try? await VaultStore.shared.reindexAllCards()
+            try? await VaultStore.shared.reindexSources()
         }
     }
 
@@ -210,6 +211,7 @@ struct PrivacyView: View {
                 try? await SpotlightIndexer.shared.reindex(memories: snapshots)
                 try? await VaultStore.shared.reindexAboutMeCard()
                 try? await VaultStore.shared.reindexAllCards()
+                try? await VaultStore.shared.reindexSources()
             } else {
                 try? await SpotlightIndexer.shared.deleteAll()
                 // Record that nothing is indexed any more.

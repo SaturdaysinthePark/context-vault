@@ -127,7 +127,7 @@ struct SourceDetailView: View {
                     Label("Disconnect source", systemImage: "trash")
                 }
             } footer: {
-                Text("Removes the connection and its access token. Already-synced memories stay in your vault.")
+                Text("Removes the connection and its access token. Already-synced memories and cards stay in your vault, and stay visible to Siri until you delete them or hide them in Privacy.")
             }
         }
         .navigationTitle(account.displayName)
@@ -135,6 +135,10 @@ struct SourceDetailView: View {
         .confirmationDialog("Disconnect \(account.displayName)?", isPresented: $confirmingDisconnect) {
             Button("Disconnect", role: .destructive) {
                 KeychainStore.delete(for: account.keychainKey)
+                // The source itself stops being findable by Siri. What was
+                // already gathered from it stays in the vault, as before.
+                let accountID = account.id
+                Task { await SpotlightIndexer.shared.removeSources(ids: [accountID]) }
                 context.delete(account)
                 try? context.save()
                 dismiss()
