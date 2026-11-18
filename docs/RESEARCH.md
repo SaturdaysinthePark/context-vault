@@ -63,3 +63,53 @@ Caveats:
 - **Google Drive:** broad scopes (`drive.readonly`) are **restricted** → paid CASA Tier 2/3 assessment; `drive.file` is non-sensitive with no verification, per-file/picker access. Use `drive.file` + picker for MVP; `files.export` for Google Docs; `changes.list` for incremental sync. ([Drive scopes guide](https://developers.google.com/workspace/drive/api/guides/api-specific-auth), [CASA overview](https://deepstrike.io/blog/google-casa-security-assessment-2025), [drive.file vs drive.readonly issue](https://github.com/Jose-cd/React-google-drive-picker/issues/79))
 - **Local sources:** EventKit, Contacts, any Markdown/text folder via the same bookmark pattern, share-extension capture. Apple Notes has no public API.
 - **Background sync:** `BGAppRefreshTask` (~30s, opportunistic) and `BGProcessingTask` (minutes, typically idle/charging) are best-effort — design foreground-first sync with resumable cursors; `LongRunningIntent` + Live Activity for big initial imports.
+
+## 7. November 2026: the Siri AI Developer Preview
+
+Read from Apple's developer documentation on 18 November 2026. Everything here is beta and Apple says it may change.
+
+### What Apple announced
+
+- **3 November 2026:** "Siri AI is now open to all developers". A Developer Preview in the iOS, iPadOS, macOS and visionOS 27.3 betas lets any app bring content and actions into Siri AI through App Intents. Siri AI "can now surface any entity in the Spotlight semantic index, not just the ones that fit an existing schema". Shipping to customers "in a few months"; App Store submission "in the spring". Terms and usage policies to follow. ([Apple Developer News](https://developer.apple.com/news/?id=gdk2umrf))
+- Availability: Apple Intelligence devices, a supported language (English, French, Japanese, Korean, Portuguese, Spanish), not in the EU on iOS, iPadOS and watchOS, not for users under 13, daily usage limits on server-side features.
+- The preview works for development-signed builds and internal TestFlight testers only. ([Siri AI Developer Preview](https://developer.apple.com/documentation/appintents/siri-ai-developer-preview))
+
+### The APIs
+
+| API | Purpose | Source |
+|---|---|---|
+| `@AppIntent(.tool)`, `ToolIntent` | Makes a custom intent a tool Siri can call | [Bringing custom actions and content to Siri](https://developer.apple.com/documentation/appintents/bringing-custom-actions-and-content-to-siri), [`ToolIntent`](https://developer.apple.com/documentation/appintents/toolintent) |
+| `@AppEntity(.generable)`, `GenerableEntity` | Lets Siri fill an entity from the request | [`GenerableEntity`](https://developer.apple.com/documentation/appintents/generableentity) |
+| `title` and `description` on properties and parameters | How Siri understands and disambiguates | same article |
+| `IntentAuthenticationPolicy`, `IntentVisibility` | Per-property unlock, and properties hidden from Siri | same article |
+| App skills: `Skills.skillsbundle/Skills/<name>/SKILL.md` | Guidance for multi-step requests. Name and description in frontmatter, body up to 10,000 characters. Guidance only, not a fixed sequence | [Orchestrating complex actions with app skills](https://developer.apple.com/documentation/appintents/orchestrating-complex-actions-with-app-skills) |
+| `SnippetRepresentableEntity`, `CardSnippet` | The card Siri shows for an entity; rendered ahead of time from static content | [Presenting an entity as a card snippet](https://developer.apple.com/documentation/appintents/presenting-an-entity-as-a-card-snippet) |
+| `indexAppEntities`, `associateAppEntity`, `IndexedEntityQuery` | Putting entities in the Spotlight index. Do not index an item and an entity for the same content | [Making app entities available in Spotlight](https://developer.apple.com/documentation/appintents/making-app-entities-available-in-spotlight) |
+| Siri Evaluations (`SiriScenario`, `UserTurn`, `Finds`, `Calls`, `Loads`, `SiriResponse`) | Scripted requests through Siri on a device, graded | [Evaluating your app's integration with Siri](https://developer.apple.com/documentation/sirievaluations/evaluating-your-apps-integration-with-siri) |
+
+Adding any tool intent makes the app's App Shortcuts unavailable to Siri; they remain for Spotlight and the Action button.
+
+### What Siri sees of an entity
+
+"When Siri finds the entity in your app's Spotlight index, those are the properties your app indexes. When Siri queries your app directly, those are the properties in the query's results." (Evaluations guide.) This is why the vault indexes a short statement that carries the answer, not a raw document.
+
+### The open question
+
+Apple's pages do not agree on whether a request that names no app reaches an app in the background:
+
+- Preview overview: "While your app is in the background, requests need to mention your app." No mention is needed in the foreground, during a Live Activity, or in a continued conversation.
+- `ToolIntent`: Siri can call a tool when the app is named, in the foreground, or "a relevant entity from that app appears in a search result".
+- Evaluations guide: "To make sure Siri sends the request to your app instead of another app, include your app's name in the request."
+
+Not documented at all: how much of an entity's text Siri reads, limits on result size or run time for a tool, and whether a tool may use the network. These need testing on a device.
+
+### Samples read
+
+- [Adopting App Intents to support system experiences](https://developer.apple.com/documentation/appintents/adopting-app-intents-to-support-system-experiences) (iOS 27.0): entity indexing, open intents, transferable entities, onscreen context, long-running intents. No tools, skills or evaluations.
+- [Integrating your messaging app with Apple Intelligence](https://developer.apple.com/documentation/appintents/integrating-your-messaging-app-with-apple-intelligence) (iOS 27.3 beta): schema entities on SwiftData, `indexAppEntities`, `deleteAppEntities`, card snippets, donations.
+
+### Not available
+
+- No Model Context Protocol support for apps or Siri. Apple's MCP support is in developer tools (Xcode, Safari).
+- No public way for another assistant to plug into Siri at the system level.
+

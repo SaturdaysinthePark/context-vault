@@ -1,5 +1,58 @@
 # Context Vault — iOS 27 Personal AI Memory Vault: Feasibility Research & Plan
 
+> **Status, November 2026.** The app has been redesigned around context cards for the Siri AI Developer Preview (iOS 27.3 beta). The section below is current. Everything from "Context" onwards is the original July 2026 plan, kept for the record.
+
+## November 2026: redesign for the Siri AI Developer Preview
+
+### What changed
+
+On 3 November 2026 Apple opened the Siri AI Developer Preview. Siri AI can now surface any app entity in the Spotlight semantic index, not only ones that fit Apple's schemas, and can call app intents marked as tools. See [`RESEARCH.md`](RESEARCH.md#7-november-2026-the-siri-ai-developer-preview).
+
+The primary use case is now explicit: a person asks Siri a general question without naming the app, and Siri answers from what the vault gathered from Gmail and other sources.
+
+### What was wrong with the July build
+
+- `MemoryEntity` declared `IndexedEntity` but was never indexed as an entity. The indexer wrote plain searchable items with no entity attached.
+- What was indexed was a raw document body. A question such as "when does my package arrive?" needs a short current fact.
+- There was no mail connector, `Memory.summary` was never set, and the entity queries ignored the privacy settings.
+
+### What is built
+
+| Area | Built |
+|---|---|
+| Knowledge | `ContextCard`, drafts, renderer, merger, search, extraction from structured mail markup and from the on-device model, the pipeline |
+| Siri | `ContextCardEntity`, `SourceEntity`, lookup / refresh / capture tools, open and search-in-app intents, card snippet, onscreen annotations, donations, an app skill |
+| Sources | Gmail (read-only, narrow default scope), refresh on ask, background refresh |
+| App | Home leads with "What Siri knows", card screens, privacy by source and kind, Gmail in onboarding, Siri Lab |
+| Tests | 55 unit tests for the framework-free logic; a Siri Evaluations target for the device |
+
+Design and reasoning: [`ARCHITECTURE.md`](ARCHITECTURE.md). Device procedure and decision gates: [`SIRI_TESTING.md`](SIRI_TESTING.md).
+
+### Where the build differs from the approved design
+
+- Documents get a summary on the memory itself, not a separate card, so each document has one index entry.
+- When the on-device model is unavailable, mail stays queued for the next pass. No fallback card is made.
+- Gmail's incremental sync uses the scope's search query with `after:<time>`, not the history API, so the same filter applies to every pass.
+- Evaluation scenarios are written in Swift, not stored as JSON.
+- The graph layer is not built.
+
+### Next
+
+1. **Run the device test** in `SIRI_TESTING.md`. Its result decides how the product is described.
+2. Fix what the first Xcode build turns up; most of the app has never been compiled.
+3. Connect real Gmail and tune extraction on real mail.
+4. Decide on a push relay for near-real-time mail, once the lag of on-device refresh is measured.
+5. Graph layer; cards from documents; `SpotlightSearchTool` in the in-app chat.
+
+### Before public release
+
+- Google's security assessment for the restricted `gmail.readonly` and `drive.readonly` scopes, or a narrower design.
+- Apple's terms and usage policies for Siri AI experiences, not yet published. App Store submission opens in spring 2027.
+- The deployment target is iOS 27.3 for the preview; revisit.
+- Siri AI is unavailable in the EU on iPhone and iPad.
+
+---
+
 ## Context
 
 Greenfield project. Context Vault is a "personal memory / context vault" iOS app targeting iOS 27:

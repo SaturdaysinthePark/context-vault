@@ -1,6 +1,6 @@
 # Connector setup
 
-Both connectors sync directly from the provider to your device — Context Vault has no server. Each needs a one-time setup on the provider's side.
+Every connector syncs directly from the provider to your device — Context Vault has no server. Each needs a one-time setup on the provider's side.
 
 ## Google Drive
 
@@ -19,6 +19,26 @@ Notes:
 - The app uses the `drive.readonly` scope. In Testing mode this works immediately for your test-user account with no verification. Publishing the app later requires either Google's CASA security assessment for that scope, or switching to the `drive.file` + picker model — a decision for App Store time, not now.
 - Because the consent screen is unverified, Google shows a "Google hasn't verified this app" warning during sign-in — tap **Continue**. That's expected in Testing mode.
 - Tokens are stored in the iOS Keychain and refreshed automatically.
+
+## Gmail
+
+What syncs: recent mail, read-only. By default only Gmail's own categories for purchases, reservations and updates (receipts, shipping notices, bookings, bills), from the last 60 days. Each message is reduced to plain text on the device, and the on-device model distils the facts worth keeping into context cards. The messages themselves are never shared with Siri; the cards are.
+
+One-time setup, using the same Google Cloud project as Google Drive:
+
+1. **APIs & Services → Library** → search "Gmail API" → **Enable**.
+2. **APIs & Services → OAuth consent screen → Data access** → add the scope `https://www.googleapis.com/auth/gmail.readonly`.
+3. Make sure your Google account is listed under **Test users**.
+4. In Context Vault: Sources → Gmail → **Sign in with Google** → choose what the vault reads → **Connect Gmail**.
+
+The same iOS OAuth client ID is used for Drive and Gmail. Each source signs in separately and asks only for its own scope.
+
+Notes:
+- `gmail.readonly` is a restricted scope. In Testing mode it works for test users with no verification. Publishing requires Google's security assessment.
+- In Testing mode Google expires sign-ins after about a week, so expect to sign in again. This is our understanding of Google's policy and has not been checked against a live account.
+- Incremental sync re-runs the scope's search query with `after:<time of the newest message seen>`. The category filters are used through the API on the assumption that they behave as in the Gmail search box; this has not been run against Gmail yet.
+- Changing the scope in the source's settings clears the cursor, so the next sync reaches back over the 60 days with the new query.
+- Mail is fetched when the app opens or returns to the front, when iOS grants a background refresh, and briefly when Siri asks a question. It is not instant.
 
 ## Notion
 

@@ -1,83 +1,166 @@
-# Context Vault — Architecture, told as a first-time user's journey
+# Context Vault — Architecture
 
-One sentence: Context Vault maintains **one on-device knowledge store** (the vault) filled from external sources, then **projects it into two places** — the system index Siri/Apple Intelligence reads, and an in-app AI chat. The only network calls ever made are to sources the user connects, pulling data *in*.
+Context Vault gathers what a person's mail and documents say, distils it into short current facts, and puts those facts where Siri AI looks. The aim is that a general question, asked without naming the app, gets a correct answer:
 
-## Step 1 — First open
+> "When should I expect my Amazon package with Twelve Kingdoms to arrive?"
 
-**Seen:** onboarding — "Connect Obsidian or a Markdown folder" or start empty. Then four tabs: Vault, Collections, Ask, Sources.
+Everything is stored and processed on the device. The only network calls the app makes are to the sources the user connects, pulling data in.
 
-**Under the hood:** `ContextVaultApp` opens the SwiftData database (a local SQLite file in the app sandbox) with four tables: `Memory`, `MemoryCollection`, `SourceAccount`, `ProfileCard`. A background sync task is registered with iOS. Nothing is stored yet; zero network.
+## Why the design is index-first
 
-## Step 2 — Connect a source
+Siri AI (iOS 27.3 Developer Preview) reaches an app in two ways:
 
-**Seen:** the standard iOS folder picker (Obsidian vault or any Markdown folder).
+1. **Its own search finds one of the app's entities** in the Spotlight semantic index. When it does, what Siri sees of that entity is the set of properties the app indexed.
+2. **It calls one of the app's tools** — an app intent marked `@AppIntent(.tool)`. Apple documents that Siri can do this when the app is named, when it is in the foreground, or when a relevant entity from the app appears in a search result.
 
-**Under the hood:** iOS issues a **security-scoped bookmark** — a durable permission token for that one folder. We store a `SourceAccount` row: type, name, the bookmark, and an empty **sync cursor**. For Obsidian there is no account, no OAuth, no API — file access is the whole integration. (Notion will differ: OAuth token in the Keychain, `last_edited_time` cursor. Google Drive: OAuth + `drive.file` scope, changes-token cursor.)
+A request that names no app can only start from route 1. So the product is the quality of what goes into the index: each indexed entity has to be findable from an everyday question and has to carry the answer in its indexed text. Tools and the app skill are the second line, for follow-ups, named requests and freshness.
 
-## Step 3 — Sync: the ingestion pipeline (`SyncManager` → `ObsidianConnector` → `MarkdownNormalizer`)
+Whether route 1 works for a background app is not settled by Apple's documentation. [`SIRI_TESTING.md`](SIRI_TESTING.md) is the procedure that settles it.
 
-For each file newer than the cursor:
+## Three layers of knowledge
 
-1. **Read** the `.md` file (skipping `.obsidian/` internals; iCloud files not yet local get a download request and are picked up next pass).
-2. **Normalize** — strip YAML front matter and Markdown noise, resolve `[[wiki links]]`, extract a title (first H1, else filename).
-3. **Store** as a `Memory` row keyed by `sourceRef` (e.g. `obsidian:<account>:<path>`) so re-syncs update rather than duplicate.
-4. **Index** into Core Spotlight (next step).
-5. Advance the cursor (newest modification time seen) — this is what makes sync incremental.
+| Layer | Model | What it holds | Does Siri see it? |
+|---|---|---|---|
+| **Evidence** | `Memory` | The raw item: an email, a document, a note | Documents and notes: yes, as their own index entry. Email: never |
+| **Context cards** | `ContextCard` | One short, typed, current fact distilled from evidence | Yes. This is the main thing indexed |
+| **Sources** | `SourceAccount` | A connected account | Its general name only ("Gmail"), so a source can be named in a request |
 
-After each pass, two on-device AI steps run best-effort: **sensitivity classification** of new memories and a **profile distillation** refresh (below).
+A **context card** is the unit Siri finds: an order, a trip, a reservation, an appointment, a bill. It has a kind, a title, a status, a date, where it came from, and a `statement` — one sentence that answers the likely question:
 
-## Step 4 — The Spotlight index: the bridge to Siri (`SpotlightIndexer`)
+> Amazon order of The Twelve Kingdoms (paperback): shipped, expected Thursday, November 19, 2026. Source: Gmail, updated Tuesday, November 17, 2026.
 
-iOS keeps a per-device search index (Core Spotlight) that, on iOS 27, doubles as the **semantic index Siri AI reads for personal context**. Apps cannot inject into Siri directly — this index is the only sanctioned channel. We write one searchable item per memory: title, text, aspect keywords, dates.
+Two rules shape the statement. Dates are absolute, because the text sits in an index for days and "tomorrow" would be wrong when it is read. And the sentence stands alone, because it may be all Siri sees.
 
-**The privacy gate lives here.** `isSiriVisible` is computed before writing: the memory's collections must allow Siri exposure (uncollected memories default to visible), AND it must not be classified `sensitive` (unless the user overrode that per-memory). Not visible → actively deleted from the index. A master kill-switch (Privacy dashboard) empties the index entirely and blocks re-population.
+One real-world thing gets one card. An order confirmation, a shipping notice and a delivery notice are three pieces of evidence about one order; they update a single card through its merge key (kind, counterpart and reference number), so the card's statement is always the current answer.
 
-**`MemorySnapshot`** is pure plumbing: SwiftData models can't cross threads, and indexing runs on a background actor, so we copy the needed fields into a plain immutable struct and hand that across. A mail envelope, not a concept.
+## The pipeline
 
-## Step 5 — Collections & aspects
+```
+Connectors            Gmail · Google Drive · Notion · Obsidian · folders
+   │                  incremental, each with its own cursor
+   ▼
+Evidence              Memory (SwiftData). Mail keeps its sender, thread and
+   │                  any structured data found in its HTML
+   ▼
+Sensitivity           on-device model: personal · professional · sensitive
+   │                  runs before anything derived can be indexed
+   ▼
+Extract               1. schema.org JSON-LD in the mail, when present (exact)
+   │                  2. the on-device model with guided generation
+   │                  Documents get a summary instead of a card
+   ▼
+Merge                 into the card with the same merge key, newest evidence wins
+   ▼
+Render                title, statement, detail lines, with absolute dates
+   ▼
+Index                 Core Spotlight, as app entities
+   ▼
+Siri AI               finds the entity · may call a tool · may load the skill
+```
 
-A `MemoryCollection` groups memories; **aspects** (topic/person/project/timeframe/source) are stored as JSON and injected into the index as keywords, sharpening what Siri matches, and scoping chat questions ("ask my Work collection"). The per-collection **"Visible to Siri" toggle** triggers reindexing of everything in it.
+| Step | Code |
+|---|---|
+| Sync orchestration, freshness | `Sync/SyncManager.swift` |
+| Connectors | `Connectors/GmailConnector.swift`, `GoogleDriveConnector.swift`, `NotionConnector.swift`, `ObsidianConnector.swift` |
+| Mail parsing (MIME, HTML to text, JSON-LD) | `Connectors/GmailMessageParser.swift` |
+| Extraction | `Knowledge/SchemaOrgExtractor.swift`, `Knowledge/ModelCardExtractor.swift` |
+| Merge and expiry | `Knowledge/CardDraft.swift`, `Knowledge/CardMerger.swift` |
+| Rendering | `Knowledge/CardRenderer.swift` |
+| Pipeline | `Knowledge/CardPipeline.swift` |
+| Index | `Indexing/SpotlightIndexer.swift` |
+| Store | `Store/VaultStore.swift` |
 
-## Step 6 — The About Me card (`ProfileCard`, `ProfileDistiller`)
+Work is queued by `Memory.cardsExtractedAt == nil`, so an interrupted pass resumes where it stopped. When the on-device model is unavailable, mail without structured data stays queued; no low-quality card is made in its place.
 
-Memories answer "what did I write?" — the card answers "who am I?", which no single memory contains. After syncs (and on demand), the on-device Foundation Model reads recent memory summaries and distills one Markdown card with four sections: who I am, current projects, how I write, preferences. Zero user effort.
+## What Siri sees
 
-- User-editable; distillation **never overwrites edits** — new drafts land as a "pending suggestion" to accept or dismiss.
-- Indexed in Spotlight (`profile-about-me`) so Siri can answer identity questions.
-- Prepended to **every** chat prompt: the densest, highest-value tokens in the small on-device context window.
+**Entities** (`Intents/`)
 
-## Step 7 — "Ask" chat: on-device RAG (`VaultChatService`)
-
-1. **Retrieve:** search the Spotlight index for the question; load the top ~8 memories from SQLite.
-2. **Budget:** pack the About Me card + memory summaries into the model's window (~4K tokens iOS 26, 8K iOS 27), tracked in characters (~4/token).
-3. **Generate:** `LanguageModelSession` (Apple's ~3B on-device model) with instructions to answer *only* from the provided context.
-4. **Provenance:** the answer carries the IDs of the memories used → citation chips in the UI; tap-through to sources.
-5. **Two-way:** any answer can be saved back into the vault with one tap, so context reflects use.
-
-On iOS 27, step 1 collapses into Apple's `SpotlightSearchTool` (the model retrieves for itself); the current manual path remains the iOS 26 fallback.
-
-## Step 8 — Siri
-
-- **Today (any Apple Intelligence device):** "Ask Context Vault…" App Shortcut runs `AskVaultIntent` — the same RAG pipeline, spoken.
-- **iOS 27 Siri AI:** the user just asks Siri naturally; Siri's personal-context system finds vault content *because it's in the semantic index from Step 4*. No app invocation needed. This is the app's core bet and differentiator.
-
-## What's stored where
-
-| Data | Where | Leaves device? |
+| Entity | Indexed as | Notes |
 |---|---|---|
-| Memories, collections, aspects, About Me card, sync cursors | SQLite (SwiftData), app sandbox | Never |
-| Folder access grants | Security-scoped bookmarks in the same DB | Never |
-| OAuth tokens (Notion/Drive, future) | iOS Keychain | Only to that provider's API |
-| Siri-visible content | Core Spotlight index (OS-managed, per-device) | Never |
-| AI processing | On-device Foundation Model (opt-in PCC later) | On-device by default |
+| `ContextCardEntity` | App entity | Title, summary (the statement) and details map to index keys. Kind, source, counterpart, date, status and last-updated are described properties. Details need device unlock before Siri reads them out |
+| `MemoryEntity` | Searchable item linked to the entity | Documents and notes only |
+| `SourceEntity` | App entity | The source's name and spoken synonyms |
+
+Every property has a title and a description written for a reader who has never seen the app, because that is what Siri uses to understand it.
+
+**Tools** — intents Siri AI can call without a fixed phrase
+
+| Tool | Does |
+|---|---|
+| `LookUpContextIntent` | Finds cards for a topic, optionally limited to a source or kind. Returns the cards; Siri does the reasoning |
+| `RefreshSourcesIntent` | Checks fast-moving sources for new information |
+| `CaptureMemoryIntent` | Saves a note |
+
+Adding any tool removes the app's App Shortcuts from Siri (Apple's rule). They stay for Spotlight and the Action button, backed by `AskVaultIntent` and `CaptureMemoryIntent`.
+
+**Other surfaces**
+
+- **App skill** (`Skills.skillsbundle/Skills/personal-context-lookup/SKILL.md`): tells Siri when to consult the vault and how to answer from a card.
+- **Schema intents**: `OpenCardIntent` and `OpenMemoryIntent` (`.system.open`), `SearchVaultIntent` (`.system.searchInApp`).
+- **Card snippet**: the view Siri shows for a card.
+- **Onscreen context**: card and memory views carry `.appEntityIdentifier`, so "this one" resolves.
+- **Mentionable sources**: the `SourceKind` app enum with synonyms, the source's name in each card's indexed text, and `SourceEntity`.
+
+**Two ways to index a card.** Apple documents `indexAppEntities` and, separately, a searchable item linked with `associateAppEntity`, and says not to use both for the same content. Which one Siri finds more reliably is not documented. `CardIndexingPath` switches between them from the Siri Lab so the two can be compared on a device.
+
+## Freshness
+
+iOS decides when background work runs, so "constantly updated" is not achievable on the device alone. In order of reliability:
+
+1. **App open, or return to the foreground** — a sync of every source.
+2. **Refresh on ask** — when Siri calls the lookup tool, a few seconds' top-up of mail before answering.
+3. **Background app refresh** (`BGAppRefreshTask`) — a short mail top-up, when the system allows.
+4. **Background processing** (`BGProcessingTask`) — a full sync when the device is idle.
+
+If Siri answers from the index without calling the tool, the answer is as old as the last sync. Every card carries its last-updated date so Siri can say how current it is. Near-real-time updates would need a small push relay server, which the app does not have.
+
+Cards whose date has passed are archived and leave the index: orders a week after their date, other dated cards after two days.
+
+## Privacy
+
+The set of things Siri can see is narrow, and every control removes from it.
+
+- **Email is never indexed.** Only the cards distilled from it are.
+- **Sensitivity** is classified on device before anything derived from a memory can be indexed. Sensitive content is held back, and a card inherits the sensitivity of its evidence.
+- **Controls** (`Views/PrivacyView.swift`, settings in `Indexing/SiriExposure.swift`): a master switch that empties the index, and toggles by source, by kind of card and by collection.
+- **Entity queries honour the same rules.** A hidden card or memory is not returned to the system by any route.
+- **Unlock before details.** Reference and tracking numbers sit in a property Siri must authenticate to read.
+
+What does leave the device: content the user shares with Siri is handled by Apple Intelligence under Apple's terms, which for this preview Apple has not yet published. Tokens go only to the provider they belong to.
+
+## What is stored where
+
+| Data | Where |
+|---|---|
+| Memories, cards, collections, About Me card, sync cursors | SwiftData (SQLite) in the app sandbox |
+| Folder access grants | Security-scoped bookmarks in the same store |
+| OAuth and API tokens | iOS Keychain |
+| What Siri can see | Core Spotlight index, managed by the OS |
+| Privacy settings | UserDefaults |
+| Model inference | On-device Foundation Model |
+
+## In-app features that share the store
+
+- **Ask** (`AI/VaultChatService.swift`): on-device question answering. It retrieves matching cards first, then documents from the Spotlight index, and cites the memories it used.
+- **About Me card** (`AI/ProfileDistiller.swift`): an editable profile distilled from recent memories; indexed for Siri and prepended to every chat prompt.
+- **Collections** (`Models/MemoryCollection.swift`): user-curated groups of memories with aspects and a Siri toggle.
+- **Context Packs** (`Export/ContextPackExporter.swift`): Markdown export of a collection for use in another assistant.
+- **Siri Lab** (`Views/SiriLabView.swift`): fictional seed data, index checks and the test phrases.
+
+## Not built yet
+
+- **Graph layer.** People, organisations and products as their own nodes with aliases, for "everything about X" and better alias matching. Cards carry their own aliases and counterpart for now.
+- **Cards from documents.** A document gets a summary on its memory, not a dated card.
+- **Push relay** for near-real-time mail.
+- **Adoption of `SpotlightSearchTool`** in the in-app chat.
 
 ## Glossary
 
-- **Memory** — one normalized piece of knowledge (note/doc/page); the vault's atom.
-- **Collection** — user-curated group of memories with aspects and a Siri-visibility toggle.
-- **Aspect** — a structured lens on a collection (topic, person, project, timeframe, source).
-- **About Me card** — the single auto-distilled, editable profile of the user; always-on AI context.
-- **Sensitivity** — on-device classification (personal/professional/sensitive); `sensitive` auto-hides from Siri.
-- **MemorySnapshot / ProfileCardSnapshot** — thread-safe copies of model data for the indexing actor.
-- **Sync cursor** — per-source high-water mark making sync incremental.
-- **Context Pack** — a Markdown export of selected context for use in any other AI.
+- **Evidence** — a raw item from a source (`Memory`).
+- **Context card** — one short, typed, current fact distilled from evidence; what Siri finds.
+- **Statement** — the card's one-sentence answer, with absolute dates.
+- **Merge key** — the identity that lets later evidence update the same card.
+- **Counterpart** — who the evidence is from or with: merchant, airline, clinic.
+- **Snapshot** — a plain copy of a model object, safe to pass between actors (`CardSnapshot`, `MemorySnapshot`, `SourceSnapshot`).
+- **Sync cursor** — a per-source marker that makes sync incremental.
