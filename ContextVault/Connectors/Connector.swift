@@ -15,6 +15,15 @@ struct SourceItem: Sendable {
     var fidelity: ContentFidelity = .full
     /// Short type label for display ("PDF", "EPUB", …).
     var fileKind: String? = nil
+    /// Explicit title. When nil the title is derived from `filename`, which
+    /// is wrong for mail subjects ("Your Amazon.com order" has no extension).
+    var title: String? = nil
+    /// Who the item is from (mail sender), if the source has that notion.
+    var sender: String? = nil
+    /// Groups items that belong together, such as a mail thread.
+    var threadKey: String? = nil
+    /// schema.org JSON-LD blocks found in the item's original HTML.
+    var structuredData: [String] = []
 }
 
 /// Resolved folder location, keyed by folder ID in `SyncResult.folderPaths`.
@@ -53,6 +62,10 @@ struct SourceAccountSnapshot: Sendable {
     /// inside them get enrichment effort even when the sync scope is
     /// "everything" (populated by SyncManager before each pass).
     var ruleFolderIDs: [String] = []
+    /// When set, the connector should fetch at most this many of the newest
+    /// items and return quickly — used for the short top-up that runs when
+    /// Siri asks a question (populated by SyncManager).
+    var quickLimit: Int? = nil
 
     init(_ account: SourceAccount) {
         self.id = account.id

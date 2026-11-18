@@ -2,15 +2,17 @@ import Foundation
 import AuthenticationServices
 import CryptoKit
 
-/// OAuth 2.0 + PKCE for Google Drive, using ASWebAuthenticationSession —
-/// no SDK dependency. Requires an iOS OAuth Client ID from a Google Cloud
+/// OAuth 2.0 + PKCE for Google (Drive and Gmail), using
+/// ASWebAuthenticationSession — no SDK dependency. Each connected source
+/// signs in separately and asks only for its own scope, so connecting
+/// Drive never grants access to mail and vice versa. Requires an iOS OAuth Client ID from a Google Cloud
 /// project (see docs/CONNECTORS.md); the redirect URI is the reversed
 /// client ID, which iOS routes back to the auth session automatically.
 ///
-/// Scope note: `drive.readonly` is a restricted scope for *published* apps
-/// (CASA audit), but works immediately for the project owner's account
-/// while the OAuth consent screen is in Testing mode — the right tradeoff
-/// for development. Revisit before any App Store release.
+/// Scope note: `drive.readonly` and `gmail.readonly` are restricted scopes
+/// for *published* apps (CASA audit), but work immediately for the project
+/// owner's account while the OAuth consent screen is in Testing mode — the
+/// right tradeoff for development. Revisit before any App Store release.
 struct GoogleTokens: Codable {
     var accessToken: String
     var refreshToken: String?
@@ -22,6 +24,8 @@ struct GoogleTokens: Codable {
 @MainActor
 final class GoogleDriveAuth: NSObject, ASWebAuthenticationPresentationContextProviding {
     static let scope = "https://www.googleapis.com/auth/drive.readonly"
+    /// Read-only access to mail. The app never sends, deletes or modifies.
+    static let gmailScope = "https://www.googleapis.com/auth/gmail.readonly"
 
     enum AuthError: LocalizedError {
         case invalidClientID
@@ -39,8 +43,8 @@ final class GoogleDriveAuth: NSObject, ASWebAuthenticationPresentationContextPro
         }
     }
 
-    /// Runs the interactive sign-in and returns tokens.
-    func signIn(clientID: String) async throws -> GoogleTokens {
+    /// Runs the interactive sign-in for one scope and returns tokens.
+    func signIn(clientID: String, scope: String = GoogleDriveAuth.scope) async throws -> GoogleTokens {
         // Client IDs look like NNN-xxxx.apps.googleusercontent.com; the
         // redirect scheme is the same string reversed around the dots.
         guard clientID.hasSuffix(".apps.googleusercontent.com") else {
@@ -58,7 +62,7 @@ final class GoogleDriveAuth: NSObject, ASWebAuthenticationPresentationContextPro
             URLQueryItem(name: "client_id", value: clientID),
             URLQueryItem(name: "redirect_uri", value: redirectURI),
             URLQueryItem(name: "response_type", value: "code"),
-            URLQueryItem(name: "scope", value: Self.scope),
+            URLQueryItem(name: "scope", value: scope),
             URLQueryItem(name: "code_challenge", value: challenge),
             URLQueryItem(name: "code_challenge_method", value: "S256"),
             URLQueryItem(name: "access_type", value: "offline"),
@@ -166,3 +170,7 @@ final class GoogleDriveAuth: NSObject, ASWebAuthenticationPresentationContextPro
         ASPresentationAnchor()
     }
 }
+
+/// The sign-in is not specific to Drive any more; this is the name new
+/// code should use.
+typealias GoogleAuth = GoogleDriveAuth

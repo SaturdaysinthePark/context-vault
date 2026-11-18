@@ -1,19 +1,34 @@
 import AppIntents
 
-/// Quick capture into the vault — from Shortcuts, Spotlight, the Action
-/// button, or the share sheet (via a Shortcut). The captured text becomes a
-/// memory immediately and is indexed for Siri/Spotlight.
+/// Saves something into the vault — from Siri ("remember that the spare
+/// key is with Dana"), Shortcuts, Spotlight or the Action button. The
+/// text becomes a note immediately and is indexed for Siri and Spotlight.
+///
+/// It is a tool, so Siri AI can call it without a fixed phrase. The same
+/// intent still backs the "Capture a memory" App Shortcut for Spotlight
+/// and the Action button.
+@AppIntent(.tool)
 struct CaptureMemoryIntent: AppIntent {
     static let title: LocalizedStringResource = "Capture Memory"
     static let description = IntentDescription(
-        "Saves text into your Context Vault.",
+        """
+        Saves a note into the person's Context Vault so it can be recalled later. Use it when \
+        the person asks to remember, save or note something for later.
+        """,
         categoryName: "Vault"
     )
 
-    @Parameter(title: "Text", requestValueDialog: "What should I remember?")
+    @Parameter(
+        title: "Text",
+        description: "The thing to remember, written as a complete statement, for example: The spare key is with Dana.",
+        requestValueDialog: "What should I remember?"
+    )
     var text: String
 
-    @Parameter(title: "Collection")
+    @Parameter(
+        title: "Collection",
+        description: "A collection in Context Vault to file the note under. Leave it empty unless the person names one."
+    )
     var collection: CollectionEntity?
 
     static var parameterSummary: some ParameterSummary {

@@ -3,14 +3,18 @@ name: ContextVault
 options:
   bundleIdPrefix: com.saturdaysinthepark
   deploymentTarget:
-    iOS: "26.0"
+    # iOS 27.3 while the Siri AI Developer Preview is the target: the tool,
+    # skill and evaluation APIs are introduced there. Preview builds can't
+    # ship to the App Store before spring 2027, so nothing is lost by
+    # requiring it. Revisit before release.
+    iOS: "27.3"
   createIntermediateGroups: true
 settings:
   base:
     # Swift 5 language mode for now — the scaffold hasn't been audited for
     # Swift 6 strict concurrency; flip to 6.0 once warnings are cleaned up.
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "0.1.0"
+    MARKETING_VERSION: "0.2.0"
     CURRENT_PROJECT_VERSION: "1"
 packages:
   ZIPFoundation:
@@ -20,7 +24,17 @@ targets:
   ContextVault:
     type: application
     platform: iOS
-    sources: [ContextVault]
+    sources:
+      - path: ContextVault
+        excludes:
+          - "Skills.skillsbundle"
+      # The app skills bundle is one resource, not a folder of loose files.
+      # If Xcode does not recognise it after generating the project, add it
+      # by hand instead: File > New > File from Template > Skills Bundle
+      # (see docs/SIRI_TESTING.md).
+      - path: ContextVault/Skills.skillsbundle
+        type: file
+        buildPhase: resources
     dependencies:
       - package: ZIPFoundation
     settings:
@@ -30,11 +44,13 @@ targets:
       path: ContextVault/Info.plist
       properties:
         UILaunchScreen: {}
-        NSSiriUsageDescription: "Context Vault lets Siri answer questions using your memories and collections."
+        NSSiriUsageDescription: "Context Vault lets Siri answer questions using what it has gathered from your connected sources."
         BGTaskSchedulerPermittedIdentifiers:
           - com.saturdaysinthepark.contextvault.sync
+          - com.saturdaysinthepark.contextvault.refresh
         UIBackgroundModes:
           - processing
+          - fetch
         CoreSpotlightContinuation: true
   ContextVaultTests:
     type: bundle.unit-test
@@ -45,3 +61,36 @@ targets:
         GENERATE_INFOPLIST_FILE: true
     dependencies:
       - target: ContextVault
+  # Siri Evaluations run only in a UI-testing bundle, on a physical device
+  # with Siri AI set up. They are not part of the default test action.
+  ContextVaultSiriEvals:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [ContextVaultSiriEvals]
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: true
+        TEST_TARGET_NAME: ContextVault
+    dependencies:
+      - target: ContextVault
+schemes:
+  ContextVault:
+    build:
+      targets:
+        ContextVault: all
+        ContextVaultTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - ContextVaultTests
+  ContextVaultSiriEvals:
+    build:
+      targets:
+        ContextVault: all
+        ContextVaultSiriEvals: [test]
+    test:
+      config: Debug
+      targets:
+        - ContextVaultSiriEvals

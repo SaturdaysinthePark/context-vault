@@ -1,4 +1,5 @@
 import SwiftUI
+import AppIntents
 import SwiftData
 
 // Shared memory components (MemoryRow, MemoryDetailView, CaptureSheet).
@@ -44,6 +45,7 @@ struct MemoryRow: View {
         case .obsidian, .files: "folder"
         case .notion: "n.square"
         case .googleDrive: "externaldrive"
+        case .gmail: "envelope"
         }
     }
 }
@@ -99,11 +101,15 @@ struct MemoryDetailView: View {
                     .padding(12)
                     .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
                     .onChange(of: memory.forceSiriVisible) {
-                        let snapshot = MemorySnapshot(memory)
-                        Task {
-                            try? await SpotlightIndexer.shared.reindex(memories: [snapshot])
-                        }
                         try? memory.modelContext?.save()
+                        let snapshot = MemorySnapshot(memory)
+                        let memoryID = memory.id
+                        Task { @MainActor in
+                            try? await SpotlightIndexer.shared.reindex(memories: [snapshot])
+                            // Cards distilled from this memory follow it.
+                            let derived = (try? VaultStore.shared.cards(evidenceID: memoryID)) ?? []
+                            try? await VaultStore.shared.reindex(cards: derived)
+                        }
                     }
                 }
 
@@ -120,6 +126,9 @@ struct MemoryDetailView: View {
         }
         .navigationTitle(memory.title)
         .navigationBarTitleDisplayMode(.inline)
+        // Tells Apple Intelligence which document is onscreen, so "this
+        // document" in a request resolves to it.
+        .appEntityIdentifier(EntityIdentifier(for: MemoryEntity.self, identifier: memory.id))
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Menu {

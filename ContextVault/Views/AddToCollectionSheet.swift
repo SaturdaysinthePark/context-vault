@@ -279,6 +279,7 @@ func sourceRefPrefixes(for account: SourceAccount) -> [String] {
 func icon(for sourceType: SourceType) -> String {
     switch sourceType {
     case .googleDrive: "externaldrive"
+    case .gmail: "envelope"
     case .notion: "n.square"
     case .obsidian, .files: "folder"
     case .manual, .shareExtension: "square.and.pencil"

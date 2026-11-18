@@ -66,7 +66,13 @@ enum SensitivityClassifier {
                 memory.sensitivity = result
                 try? VaultStore.shared.context.save()
                 let snapshot = MemorySnapshot(memory)
-                Task { try? await SpotlightIndexer.shared.reindex(memories: [snapshot]) }
+                // Cards distilled from this memory inherit its sensitivity,
+                // so they are reindexed (and removed if now hidden) too.
+                let derived = (try? VaultStore.shared.cards(evidenceID: id)) ?? []
+                Task {
+                    try? await SpotlightIndexer.shared.reindex(memories: [snapshot])
+                    try? await VaultStore.shared.reindex(cards: derived)
+                }
             }
         }
     }

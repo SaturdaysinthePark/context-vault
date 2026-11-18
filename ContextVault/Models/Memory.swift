@@ -1,42 +1,6 @@
 import Foundation
 import SwiftData
 
-/// The kind of source a memory came from.
-enum SourceType: String, Codable, CaseIterable, Sendable {
-    case manual
-    case obsidian
-    case notion
-    case googleDrive
-    case files
-    case shareExtension
-}
-
-/// On-device-classified sensitivity of a memory. `sensitive` content is
-/// excluded from the system index by default, making privacy proactive.
-enum Sensitivity: String, Codable, CaseIterable, Sendable {
-    case unclassified
-    case personal
-    case professional
-    case sensitive
-}
-
-/// How much of the underlying file's content this memory carries.
-enum ContentFidelity: String, Codable, CaseIterable, Sendable {
-    case full          // native text (docs, markdown)
-    case extracted     // text pulled out of a binary (PDF, EPUB, DOCX)
-    case captioned     // OCR/caption enrichment (images)
-    case metadataOnly  // name, type, location — content unreadable
-
-    var badge: String? {
-        switch self {
-        case .full: nil
-        case .extracted: "text extracted"
-        case .captioned: "captioned"
-        case .metadataOnly: "metadata only"
-        }
-    }
-}
-
 /// A normalized piece of knowledge: a note, document, page, or highlight.
 @Model
 final class Memory {
@@ -67,6 +31,18 @@ final class Memory {
     var modifiedAt: Date
     /// Set when the memory has been written to the Spotlight index.
     var indexedAt: Date?
+    /// Who the evidence is from, for mail: "Amazon.com <ship@amazon.com>".
+    var sender: String?
+    /// Groups evidence that belongs together (a mail thread), so related
+    /// messages can update one context card.
+    var threadKey: String?
+    /// JSON array of schema.org JSON-LD blocks found in the evidence's
+    /// original HTML (orders, deliveries, reservations). Kept because the
+    /// HTML itself is discarded after the text is extracted.
+    var structuredData: String?
+    /// When context cards were last distilled from this memory. Cleared
+    /// whenever the content changes, which queues it for extraction again.
+    var cardsExtractedAt: Date?
     var collections: [MemoryCollection]
 
     var sourceType: SourceType {
@@ -84,13 +60,21 @@ final class Memory {
         set { fidelityRaw = newValue.rawValue }
     }
 
-    /// True when the memory may enter the system index: its collections
-    /// allow Siri exposure (uncollected memories are default-exposed) AND
-    /// it isn't classified sensitive (unless the user overrode that).
-    var isSiriVisible: Bool {
+    /// True when the user's own privacy settings allow this memory to
+    /// inform Siri: its collections allow Siri exposure (uncollected
+    /// memories are default-exposed) AND it isn't classified sensitive
+    /// (unless the user overrode that). Cards distilled from this memory
+    /// inherit this answer.
+    var allowsSiriExposure: Bool {
         let collectionAllows = collections.isEmpty || collections.contains { $0.siriVisible }
         let sensitivityAllows = sensitivity != .sensitive || forceSiriVisible
         return collectionAllows && sensitivityAllows
+    }
+
+    /// True when the memory's own text may enter the system index. Email
+    /// evidence never does, whatever the privacy settings say.
+    var isSiriVisible: Bool {
+        allowsSiriExposure && sourceType.indexesEvidence
     }
 
     init(

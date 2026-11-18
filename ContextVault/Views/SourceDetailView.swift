@@ -32,6 +32,27 @@ struct SourceDetailView: View {
         account.configData.flatMap { try? JSONDecoder().decode(GoogleDriveConfig.self, from: $0) }
     }
 
+    private var gmailConfig: GmailConfig? {
+        account.configData.flatMap { try? JSONDecoder().decode(GmailConfig.self, from: $0) }
+    }
+
+    /// Reads and writes the Gmail scope stored in the account's config.
+    /// Changing it clears the sync cursor so the next sync reaches back
+    /// over the lookback window with the new query.
+    private var gmailScope: Binding<GmailScope> {
+        Binding(
+            get: { gmailConfig?.scope ?? .transactional },
+            set: { newScope in
+                guard var config = gmailConfig, config.scope != newScope else { return }
+                config.scope = newScope
+                account.configData = try? JSONEncoder().encode(config)
+                account.syncCursor = nil
+                try? context.save()
+                runSync()
+            }
+        )
+    }
+
     var body: some View {
         List {
             Section("Status") {
@@ -48,6 +69,20 @@ struct SourceDetailView: View {
                     }
                 }
                 .disabled(syncing)
+            }
+
+            if account.sourceType == .gmail {
+                Section {
+                    Picker("Mail to read", selection: gmailScope) {
+                        ForEach(GmailScope.allCases, id: \.self) { option in
+                            Text(option.title).tag(option)
+                        }
+                    }
+                } header: {
+                    Text("Scope")
+                } footer: {
+                    Text("\(gmailScope.wrappedValue.explanation) Messages stay on this device; Siri is only given the short facts distilled from them.")
+                }
             }
 
             if account.sourceType == .googleDrive {

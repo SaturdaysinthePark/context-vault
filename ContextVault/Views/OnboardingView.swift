@@ -1,9 +1,9 @@
 import SwiftUI
 import SwiftData
 
-/// First-launch flow — the "90 seconds to value" arc: connect a folder (or
-/// skip), watch the vault build and the About Me card distill, land in the
-/// app with context already working. Entirely on device.
+/// First-launch flow — the "90 seconds to value" arc: connect Gmail or a
+/// notes folder (or skip), watch the vault build, land in the app with
+/// context already working. Syncing and distilling happen on device.
 struct OnboardingView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
@@ -17,6 +17,8 @@ struct OnboardingView: View {
 
     @State private var step: Step = .welcome
     @State private var showingFolderPicker = false
+    @State private var showingGmailConnect = false
+    @Query private var accounts: [SourceAccount]
 
     var body: some View {
         VStack(spacing: 24) {
@@ -29,18 +31,26 @@ struct OnboardingView: View {
                 Text("Your AI, with your context")
                     .font(.title.bold())
                     .multilineTextAlignment(.center)
-                Text("Connect a notes folder and Context Vault builds a private, on-device memory Siri and Apple Intelligence can draw from. Nothing ever leaves your iPhone.")
+                Text("Connect your mail or notes and Context Vault turns them into short facts Siri can answer from: when a package arrives, when a flight leaves, when a bill is due. Your messages and documents stay on your iPhone; you choose what Siri sees.")
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal)
                 Spacer()
+                Button {
+                    showingGmailConnect = true
+                } label: {
+                    Label("Connect Gmail", systemImage: "envelope.badge")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
                 Button {
                     showingFolderPicker = true
                 } label: {
                     Label("Connect Obsidian or a Markdown folder", systemImage: "folder.badge.plus")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.bordered)
                 .controlSize(.large)
                 Button("Start with an empty vault") {
                     finish()
@@ -66,8 +76,8 @@ struct OnboardingView: View {
                 Text(cardBuilt ? "Your context is ready" : "Vault connected")
                     .font(.title2.bold())
                 Text(cardBuilt
-                    ? "Your memories are synced and an About Me card has been distilled. Ask your vault anything — or just ask Siri."
-                    : "Your memories are synced. The About Me card will distill after the next sync once Apple Intelligence is available.")
+                    ? "Your sources are synced and your first cards are ready. Ask your vault anything — or just ask Siri, without naming this app."
+                    : "Your sources are synced. Cards are distilled once Apple Intelligence is available, and more appear after each sync.")
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal)
@@ -89,6 +99,14 @@ struct OnboardingView: View {
         ) { result in
             guard case .success(let url) = result else { return }
             connectAndBuild(url)
+        }
+        .sheet(isPresented: $showingGmailConnect, onDismiss: {
+            // The sheet starts a sync itself when it connects an account.
+            if accounts.contains(where: { $0.sourceType == .gmail }) {
+                build(status: "Reading your recent mail…")
+            }
+        }) {
+            GmailConnectSheet()
         }
     }
 
@@ -113,15 +131,20 @@ struct OnboardingView: View {
             return
         }
 
-        step = .building("Reading your notes…")
+        build(status: "Reading your notes…")
+    }
+
+    /// Runs a sync and the first distilling pass, then reports whether
+    /// any context cards (or the About Me card) came out of it.
+    private func build(status: String) {
+        step = .building(status)
         Task { @MainActor in
+            // A sync also runs the distilling pass that produces cards.
             await SyncManager.shared.syncAll()
             step = .building("Distilling your About Me card…")
-            var cardBuilt = false
-            if #available(iOS 26.0, *) {
-                cardBuilt = await ProfileDistiller().distill()
-            }
-            step = .done(cardBuilt: cardBuilt)
+            let profileBuilt = await ProfileDistiller().distill()
+            let cards = (try? VaultStore.shared.cards(includeArchived: false)) ?? []
+            step = .done(cardBuilt: !cards.isEmpty || profileBuilt)
         }
     }
 

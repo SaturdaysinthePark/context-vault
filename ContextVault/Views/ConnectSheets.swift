@@ -224,3 +224,146 @@ struct NotionConnectSheet: View {
         }
     }
 }
+
+/// Gmail connect flow: sign in with Google for read-only mail access, then
+/// choose which mail the vault reads. Tokens land in the Keychain.
+struct GmailConnectSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var context
+    @State private var clientID = ConnectorSecrets.googleClientID
+    @State private var working = false
+    @State private var errorMessage: String?
+    /// Set once sign-in succeeds; the sheet then shows the scope step.
+    @State private var signedIn: (tokens: GoogleTokens, email: String)?
+    @State private var scope: GmailScope = .transactional
+
+    private var isConfigured: Bool { !ConnectorSecrets.googleClientID.isEmpty }
+
+    private var trimmedClientID: String {
+        clientID.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                if let signedIn {
+                    scopeStep(email: signedIn.email)
+                } else {
+                    signInStep
+                }
+
+                if let errorMessage {
+                    Section {
+                        Text(errorMessage).foregroundStyle(.red)
+                    }
+                }
+            }
+            .navigationTitle("Gmail")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var signInStep: some View {
+        Section {
+            Label("Your mail is read on this device, directly from Google. Access is read-only: the app cannot send, delete or change anything.", systemImage: "lock.shield")
+                .font(.callout)
+            Label("Siri is given short facts distilled from your mail, such as a delivery date. The messages themselves are never shared with Siri.", systemImage: "sparkles")
+                .font(.callout)
+        }
+
+        if !isConfigured {
+            Section {
+                TextField("xxxx.apps.googleusercontent.com", text: $clientID)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .font(.footnote.monospaced())
+            } header: {
+                Text("iOS OAuth Client ID")
+            } footer: {
+                Text("Developer setup: this build has no baked-in client ID. Create one per docs/CONNECTORS.md and paste it here.")
+            }
+        }
+
+        Section {
+            Button {
+                signIn()
+            } label: {
+                if working {
+                    HStack { ProgressView(); Text("Signing in…") }
+                } else {
+                    Label("Sign in with Google", systemImage: "person.badge.key")
+                }
+            }
+            .disabled(working || !clientID.hasSuffix(".apps.googleusercontent.com"))
+        }
+    }
+
+    @ViewBuilder
+    private func scopeStep(email: String) -> some View {
+        Section {
+            Picker("Mail to read", selection: $scope) {
+                ForEach(GmailScope.allCases, id: \.self) { option in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(option.title)
+                        Text(option.explanation)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .tag(option)
+                }
+            }
+            .pickerStyle(.inline)
+            .labelsHidden()
+        } header: {
+            Text("What should the vault read?")
+        } footer: {
+            Text("Signed in as \(email). You can change this later from the source's settings.")
+        }
+
+        Section {
+            Button {
+                finalize()
+            } label: {
+                Label("Connect Gmail", systemImage: "envelope.badge")
+            }
+        }
+    }
+
+    private func signIn() {
+        working = true
+        errorMessage = nil
+
+        Task { @MainActor in
+            defer { working = false }
+            do {
+                let tokens = try await GoogleAuth().signIn(clientID: trimmedClientID, scope: GoogleAuth.gmailScope)
+                let email = try await GmailConnector.validate(tokens: tokens)
+                signedIn = (tokens, email)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    private func finalize() {
+        guard let signedIn else { return }
+        let config = GmailConfig(clientID: trimmedClientID, scope: scope, emailAddress: signedIn.email)
+        let account = SourceAccount(
+            sourceType: .gmail,
+            displayName: "Gmail (\(signedIn.email))",
+            configData: try? JSONEncoder().encode(config)
+        )
+        KeychainStore.save(signedIn.tokens, for: account.keychainKey)
+        context.insert(account)
+        try? context.save()
+
+        dismiss()
+        Task { await SyncManager.shared.syncAll() }
+    }
+}

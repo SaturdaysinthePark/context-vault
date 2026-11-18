@@ -5,6 +5,7 @@
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
 		<string>com.saturdaysinthepark.contextvault.sync</string>
+		<string>com.saturdaysinthepark.contextvault.refresh</string>
 	</array>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
@@ -25,10 +26,11 @@
 	<key>CoreSpotlightContinuation</key>
 	<true/>
 	<key>NSSiriUsageDescription</key>
-	<string>Context Vault lets Siri answer questions using your memories and collections.</string>
+	<string>Context Vault lets Siri answer questions using what it has gathered from your connected sources.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>processing</string>
+		<string>fetch</string>
 	</array>
 	<key>UILaunchScreen</key>
 	<dict/>

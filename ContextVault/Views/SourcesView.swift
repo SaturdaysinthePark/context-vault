@@ -2,8 +2,8 @@ import SwiftUI
 import SwiftData
 import UniformTypeIdentifiers
 
-/// Connected sources. Phase 1 ships the folder-based connector (Obsidian or
-/// any Markdown folder); Notion and Google Drive land in Phase 3.
+/// Connected sources: Gmail, Google Drive, Notion, and folder-based sources
+/// (Obsidian or any Markdown folder).
 struct SourcesView: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \SourceAccount.createdAt) private var accounts: [SourceAccount]
@@ -11,6 +11,7 @@ struct SourcesView: View {
     @State private var pickerSourceType: SourceType = .obsidian
     @State private var showingGoogleDriveConnect = false
     @State private var showingNotionConnect = false
+    @State private var showingGmailConnect = false
     @State private var syncing = false
 
     var body: some View {
@@ -66,6 +67,13 @@ struct SourcesView: View {
                         Label("Markdown folder", systemImage: "folder")
                     }
                     // One-account sources disappear once connected.
+                    if !accounts.contains(where: { $0.sourceType == .gmail }) {
+                        Button {
+                            showingGmailConnect = true
+                        } label: {
+                            Label("Gmail", systemImage: "envelope")
+                        }
+                    }
                     if !accounts.contains(where: { $0.sourceType == .googleDrive }) {
                         Button {
                             showingGoogleDriveConnect = true
@@ -83,7 +91,7 @@ struct SourcesView: View {
                 } header: {
                     Text("Add a source")
                 } footer: {
-                    if accounts.contains(where: { $0.sourceType == .googleDrive || $0.sourceType == .notion }) {
+                    if accounts.contains(where: { [.gmail, .googleDrive, .notion].contains($0.sourceType) }) {
                         Text("Already-connected sources are managed above. Folder sources can be added more than once.")
                     }
                 }
@@ -126,6 +134,9 @@ struct SourcesView: View {
             }
             .sheet(isPresented: $showingNotionConnect) {
                 NotionConnectSheet()
+            }
+            .sheet(isPresented: $showingGmailConnect) {
+                GmailConnectSheet()
             }
         }
     }

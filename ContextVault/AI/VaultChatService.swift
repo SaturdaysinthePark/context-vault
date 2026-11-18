@@ -1,7 +1,8 @@
 import Foundation
 import FoundationModels
 
-/// "Ask your Vault" — on-device RAG over the user's memories.
+/// "Ask your Vault" — on-device RAG over the user's context cards and
+/// memories.
 ///
 /// iOS 27 path: hand the Foundation Models session a `SpotlightSearchTool`
 /// and let the model retrieve from the app's own Spotlight index directly
@@ -80,7 +81,15 @@ final class VaultChatService {
             return card.content
         }
 
-        // 1. Retrieve candidate memories from the Spotlight index.
+        // 1a. Context cards first: short, current facts ("your order
+        //     arrives Thursday") answer most questions outright. This is
+        //     the user's own app, so cards hidden from Siri still count.
+        //     Cards belong to no collection, so a scoped question skips them.
+        let cards: [CardSnapshot] = collection != nil ? [] : await MainActor.run {
+            (try? VaultStore.shared.searchCards(query: question, limit: 4, siriVisibleOnly: false)) ?? []
+        }
+
+        // 1b. Retrieve candidate memories from the Spotlight index.
         let identifiers = try await SpotlightIndexer.shared.search(question, limit: 8)
         let ids = identifiers.compactMap { UUID(uuidString: $0.replacingOccurrences(of: "memory-", with: "")) }
 
@@ -102,6 +111,12 @@ final class VaultChatService {
             let profileSection = "## About the user\n\(aboutMe)"
             contextParts.append(profileSection)
             used += profileSection.count
+        }
+        if !cards.isEmpty {
+            let facts = cards.map { "- \($0.statement)" }.joined(separator: "\n")
+            let cardSection = "## Current facts from the user's mail and documents\n\(facts)"
+            contextParts.append(cardSection)
+            used += cardSection.count
         }
         for memory in memories {
             let snippet = "## \(memory.title)\n\(memory.summary ?? String(memory.body.prefix(Chunker.targetSize)))"
